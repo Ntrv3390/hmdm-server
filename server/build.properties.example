@@ -7,13 +7,14 @@ jdbc.username=hmdm
 jdbc.password=hmdm
 
 # A path to a base app directory to store internal data
-base.directory=D:/home/launcher
+base.directory=/opt/hmdm
 
 # A path to a directory to store uploaded files
-files.directory=D:/home/launcher/files
+
+files.directory=/opt/hmdm/files
 
 # A base URL for deployment of this build
-base.url=http://localhost:9090
+base.url=http://localhost:8080
 
 # A usage scenario:
 # shared: the application hosts data for multiple customers
@@ -33,10 +34,10 @@ hash.secret=changeme-C3z9vi54
 role.orgadmin.id=2
 
 # A path to a root directory for storing plugin files
-plugins.files.directory=/home/launcher/plugins
+plugins.files.directory=/opt/hmdm/plugins
 
 # A path to a file to be created by the application initializer to signal on initialization completion
-initialization.completion.signal.file=/home/launcher/initialized.txt
+initialization.completion.signal.file=/opt/hmdm/initialized.txt
 
 # A command for calling the aapt
 aapt.command=aapt
@@ -46,6 +47,7 @@ log4j.config=file:///log4j-hmdm.xml
 
 # The parameters specific to Device Log plugin
 plugin.devicelog.persistence.config.class=com.hmdm.plugins.devicelog.persistence.postgres.DeviceLogPostgresPersistenceConfiguration
+plugin.worktime.persistence.config.class=com.hmdm.plugins.worktime.persistence.postgres.WorkTimePostgresPersistenceConfiguration
 
 # MQTT notification server local URI
 mqtt.server.uri=localhost:31000

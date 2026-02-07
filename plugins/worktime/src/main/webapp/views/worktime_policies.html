@@ -1,0 +1,183 @@
+<div ng-controller="WorkTimePoliciesController" class="worktime-wrapper">
+
+  <style>
+    .worktime-wrapper {
+      margin-top: 20px;
+    }
+
+    .shadow-card {
+      border-radius: 8px;
+      border: none;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    }
+
+    .section {
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      margin-bottom: 15px;
+      font-weight: 600;
+      color: #444;
+    }
+
+    .day-toggle-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .day-toggle {
+      min-width: 60px;
+      border-radius: 20px;
+      transition: all 0.2s ease;
+    }
+
+    .day-toggle:hover {
+      transform: translateY(-1px);
+    }
+
+    .active-day {
+      background-color: #337ab7;
+      border-color: #2e6da4;
+      color: white;
+    }
+
+    .form-actions {
+      margin-top: 25px;
+    }
+
+    .panel-heading {
+      background: #f7f9fc;
+      border-bottom: 1px solid #e5e8ec;
+      border-radius: 8px 8px 0 0;
+    }
+
+    .panel-title {
+      font-weight: 600;
+      font-size: 18px;
+    }
+
+    .panel-body {
+      padding: 25px;
+    }
+
+    .form-control.input-lg {
+      height: 45px;
+      font-size: 16px;
+    }
+  </style>
+
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="panel panel-default shadow-card">
+
+          <!-- Header -->
+          <div class="panel-heading">
+            <h3 class="panel-title">
+              <i class="glyphicon glyphicon-time"></i>
+              Global Work Time Policy
+            </h3>
+          </div>
+
+          <div class="panel-body">
+
+            <!-- Error -->
+            <div class="alert alert-danger" ng-if="error">
+              {{error}}
+            </div>
+
+            <!-- Form -->
+            <form class="form-horizontal" ng-if="policy">
+
+              <!-- Time Section -->
+              <div class="section">
+                <h4 class="section-title">Working Hours</h4>
+
+                <div class="row">
+                  <div class="col-sm-6">
+                    <label>Start time</label>
+                    <input
+                      type="text"
+                      class="form-control input-lg"
+                      ng-model="policy.startTime"
+                      placeholder="HH:mm">
+                  </div>
+
+                  <div class="col-sm-6">
+                    <label>End time</label>
+                    <input
+                      type="text"
+                      class="form-control input-lg"
+                      ng-model="policy.endTime"
+                      placeholder="HH:mm">
+                  </div>
+                </div>
+              </div>
+
+              <hr>
+
+              <!-- Days Section -->
+              <div class="section">
+                <h4 class="section-title">Working Days</h4>
+
+                <div class="day-toggle-group">
+                  <button
+                    type="button"
+                    class="btn day-toggle"
+                    ng-repeat="day in days"
+                    ng-class="{'btn-primary active-day': hasDay(day.id)}"
+                    ng-click="toggleDay(day.id)">
+                    {{day.label}}
+                  </button>
+                </div>
+              </div>
+
+              <hr>
+
+              <!-- Allowed Apps -->
+              <div class="section">
+                <h4 class="section-title">App Access Rules</h4>
+
+                <div class="form-group">
+                  <label>Allowed during work</label>
+                  <textarea
+                    class="form-control"
+                    rows="3"
+                    ng-model="policy.allowedAppsDuringWork"
+                    placeholder="com.whatsapp, com.chrome or *"></textarea>
+                  <p class="help-block">Use <strong>*</strong> to allow all apps.</p>
+                </div>
+
+                <div class="form-group">
+                  <label>Allowed outside work</label>
+                  <textarea
+                    class="form-control"
+                    rows="3"
+                    ng-model="policy.allowedAppsOutsideWork"
+                    placeholder="com.spotify, com.youtube or *"></textarea>
+                  <p class="help-block">Use <strong>*</strong> to allow all apps.</p>
+                </div>
+              </div>
+
+              <!-- Buttons -->
+              <div class="form-actions text-right">
+                <button class="btn btn-default" ng-click="refresh()">
+                  Reload
+                </button>
+                <button class="btn btn-success" ng-click="save()">
+                  <i class="glyphicon glyphicon-floppy-disk"></i>
+                  Save Policy
+                </button>
+              </div>
+
+            </form>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

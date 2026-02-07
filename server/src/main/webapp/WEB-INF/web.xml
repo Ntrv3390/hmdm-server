@@ -5,6 +5,11 @@
 <web-app>
     <display-name>Headwind MDM</display-name>
 
+    <context-param>
+        <param-name>plugin.worktime.persistence.config.class</param-name>
+        <param-value>com.hmdm.plugins.worktime.persistence.postgres.WorkTimePostgresPersistenceConfiguration</param-value>
+    </context-param>
+
     <filter>
         <filter-name>guice-filter</filter-name>
         <filter-class>com.google.inject.servlet.GuiceFilter</filter-class>

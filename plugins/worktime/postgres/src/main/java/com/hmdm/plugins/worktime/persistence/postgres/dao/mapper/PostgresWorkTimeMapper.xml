@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hmdm.plugins.worktime.persistence.postgres.dao.mapper.PostgresWorkTimeMapper">
+
+    <resultMap id="globalPolicyResult"
+               type="com.hmdm.plugins.worktime.model.GlobalWorkTimePolicy">
+        <id property="id" column="id"/>
+        <result property="startTime" column="start_time"/>
+        <result property="endTime" column="end_time"/>
+        <result property="daysOfWeek" column="days_of_week"/>
+        <result property="allowedAppsDuringWork" column="allowed_apps_during_work"/>
+        <result property="allowedAppsOutsideWork" column="allowed_apps_outside_work"/>
+        <result property="enabled" column="enabled"/>
+        <result property="customerId" column="customer_id"/>
+    </resultMap>
+
+    <select id="getGlobalPolicy" resultMap="globalPolicyResult">
+        SELECT *
+        FROM worktime_global_policy
+        WHERE customer_id = #{customerId}
+        LIMIT 1
+    </select>
+
+    <insert id="insertGlobalPolicy">
+        INSERT INTO worktime_global_policy (
+            id,
+            start_time,
+            end_time,
+            days_of_week,
+            allowed_apps_during_work,
+            allowed_apps_outside_work,
+            enabled,
+            customer_id
+        ) VALUES (
+            1,
+            #{startTime},
+            #{endTime},
+            #{daysOfWeek},
+            #{allowedAppsDuringWork},
+            #{allowedAppsOutsideWork},
+            #{enabled},
+            #{customerId}
+        )
+    </insert>
+
+    <update id="updateGlobalPolicy">
+        UPDATE worktime_global_policy
+        SET
+            start_time = #{startTime},
+            end_time = #{endTime},
+            days_of_week = #{daysOfWeek},
+            allowed_apps_during_work = #{allowedAppsDuringWork},
+            allowed_apps_outside_work = #{allowedAppsOutsideWork},
+            enabled = #{enabled}
+        WHERE id = 1
+          AND customer_id = #{customerId}
+    </update>
+
+</mapper>

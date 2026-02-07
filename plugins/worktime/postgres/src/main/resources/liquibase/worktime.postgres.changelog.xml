@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.0.xsd">
+
+    <!-- ========================================================= -->
+    <!-- Drop old tables (if they exist)                          -->
+    <!-- ========================================================= -->
+    <changeSet id="worktime-drop-old-structures" author="worktime-plugin">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="work_time_policy_device_groups"/>
+        </preConditions>
+        <dropTable tableName="work_time_policy_device_groups"/>
+    </changeSet>
+
+    <changeSet id="worktime-drop-old-policies" author="worktime-plugin">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="work_time_policies"/>
+        </preConditions>
+        <dropTable tableName="work_time_policies"/>
+    </changeSet>
+
+    <!-- ========================================================= -->
+    <!-- New global policy table                                  -->
+    <!-- ========================================================= -->
+    <changeSet id="worktime-create-global-policy" author="worktime-plugin">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="worktime_global_policy"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="worktime_global_policy">
+            <column name="id" type="SERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <column name="start_time" type="VARCHAR(5)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="end_time" type="VARCHAR(5)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="days_of_week" type="INT">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="allowed_apps_during_work" type="TEXT"/>
+            <column name="allowed_apps_outside_work" type="TEXT"/>
+
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true"/>
+            <column name="customer_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- ========================================================= -->
+    <!-- Global override table                                    -->
+    <!-- ========================================================= -->
+    <changeSet id="worktime-create-global-override" author="worktime-plugin">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="worktime_global_override"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="worktime_global_override">
+            <column name="id" type="SERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <column name="start_datetime" type="TIMESTAMP"/>
+            <column name="end_datetime" type="TIMESTAMP"/>
+
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true"/>
+            <column name="customer_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- ========================================================= -->
+    <!-- Per-user override table                                  -->
+    <!-- ========================================================= -->
+    <changeSet id="worktime-create-user-override" author="worktime-plugin">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="worktime_user_override"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="worktime_user_override">
+            <column name="id" type="SERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <column name="user_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="start_datetime" type="TIMESTAMP"/>
+            <column name="end_datetime" type="TIMESTAMP"/>
+
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true"/>
+            <column name="customer_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- ========================================================= -->
+    <!-- Insert default global policy (if missing)                -->
+    <!-- ========================================================= -->
+    <changeSet id="worktime-insert-default-policy" author="worktime-plugin">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM worktime_global_policy WHERE id = 1
+            </sqlCheck>
+        </preConditions>
+
+        <insert tableName="worktime_global_policy">
+            <column name="id" valueNumeric="1"/>
+            <column name="start_time" value="09:00"/>
+            <column name="end_time" value="18:00"/>
+            <column name="days_of_week" valueNumeric="31"/>
+            <column name="allowed_apps_during_work" value=""/>
+            <column name="allowed_apps_outside_work" value="*"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="customer_id" valueNumeric="1"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>
