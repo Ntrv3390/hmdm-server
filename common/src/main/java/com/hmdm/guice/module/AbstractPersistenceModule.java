@@ -77,6 +77,15 @@ public abstract class AbstractPersistenceModule extends MyBatisModule {
             }
         }
 
+        String jdbcDriver = this.context.getInitParameter("JDBC.driver");
+        if (jdbcDriver != null) {
+            try {
+                Class.forName(jdbcDriver);
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException("JDBC driver class not found: " + jdbcDriver, e);
+            }
+        }
+
         this.bindConstant().annotatedWith(Names.named("mybatis.pooled.maximumActiveConnections")).to(30);
         this.environmentId("production");
         this.bindDataSourceProviderType(PooledDataSourceProvider.class);

@@ -71,6 +71,19 @@
   <div class="container-fluid">
     <div class="row">
       <div class="col-md-12">
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-tabs" role="tablist" style="margin-bottom: 20px;">
+          <li role="presentation" class="active">
+            <a href="/#/plugin-worktime" style="color: #337ab7; font-weight: 600;">Global Policy</a>
+          </li>
+          <li role="presentation">
+            <a href="/#/plugin-worktime/users" style="color: #666; font-weight: 600;">User Exceptions</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-12">
         <div class="panel panel-default shadow-card">
 
           <!-- Header -->
@@ -83,11 +96,25 @@
 
           <div class="panel-body">
 
-            <!-- Error -->
-            <div class="alert alert-danger" ng-if="error">
-              {{error}}
+            <!-- Success Message -->
+            <div class="alert alert-success" ng-if="success">
+              <i class="glyphicon glyphicon-ok"></i> {{success}}
             </div>
 
+            <!-- Error -->
+            <div class="alert alert-danger" ng-if="error">
+              <i class="glyphicon glyphicon-exclamation-sign"></i> {{error}}
+            </div>
+
+            <!-- Enabled Toggle -->
+            <div class="form-group">
+              <label class="control-label">Policy Enabled</label>
+              <div>
+                <label class="checkbox-inline">
+                  <input type="checkbox" ng-model="policy.enabled"> Enable enforcement
+                </label>
+              </div>
+            </div>
             <!-- Form -->
             <form class="form-horizontal" ng-if="policy">
 
@@ -141,23 +168,119 @@
                 <h4 class="section-title">App Access Rules</h4>
 
                 <div class="form-group">
-                  <label>Allowed during work</label>
-                  <textarea
-                    class="form-control"
-                    rows="3"
-                    ng-model="policy.allowedAppsDuringWork"
-                    placeholder="com.whatsapp, com.chrome or *"></textarea>
-                  <p class="help-block">Use <strong>*</strong> to allow all apps.</p>
+                  <label>Allowed during work <span class="badge">{{countSelected(selectedAppsDuringWork)}}</span></label>
+                  <p class="help-block" style="margin-top: 5px; margin-bottom: 10px;">
+                    Select apps that can be used during work hours, or select "All Apps" to allow everything.
+                  </p>
+                  
+                  <div ng-if="appsLoading" style="text-align: center; padding: 20px;">
+                    <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
+                    <p>Loading applications...</p>
+                  </div>
+                  
+                  <div ng-if="!appsLoading">
+                    <!-- Search box -->
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      ng-model="duringWorkSearchText" 
+                      placeholder="Search apps..."
+                      style="margin-bottom: 10px;">
+                    
+                    <!-- App list container -->
+                    <div style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 10px; background: #fafafa;">
+                      <!-- All apps option -->
+                      <label class="checkbox" style="margin-bottom: 8px; padding: 8px; background: #fff; border-radius: 4px; display: block; cursor: pointer;">
+                        <input 
+                          type="checkbox" 
+                          ng-model="selectedAppsDuringWork['*']" 
+                          ng-change="toggleAllAppsDuringWork()">
+                        <strong style="margin-left: 5px;">All Apps</strong>
+                      </label>
+                      
+                      <hr style="margin: 10px 0;">
+                      
+                      <!-- Individual apps -->
+                      <div ng-if="applications.length === 0" style="padding: 20px; text-align: center; color: #999;">
+                        No applications found
+                      </div>
+                      
+                      <label 
+                        class="checkbox" 
+                        ng-repeat="app in getFilteredAppsDuringWork()"
+                        style="margin-bottom: 5px; padding: 8px; background: #fff; border-radius: 4px; display: block; cursor: pointer;"
+                        ng-class="{'text-muted': selectedAppsDuringWork['*']}">
+                        <input 
+                          type="checkbox" 
+                          ng-model="selectedAppsDuringWork[app.pkg]" 
+                          ng-change="toggleIndividualAppDuringWork(app.pkg)"
+                          ng-disabled="selectedAppsDuringWork['*']">
+                        <span style="margin-left: 5px;">
+                          <strong>{{app.name || app.pkg}}</strong>
+                          <br>
+                          <small style="color: #666;">{{app.pkg}}</small>
+                        </span>
+                      </label>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="form-group">
-                  <label>Allowed outside work</label>
-                  <textarea
-                    class="form-control"
-                    rows="3"
-                    ng-model="policy.allowedAppsOutsideWork"
-                    placeholder="com.spotify, com.youtube or *"></textarea>
-                  <p class="help-block">Use <strong>*</strong> to allow all apps.</p>
+                  <label>Allowed outside work <span class="badge">{{countSelected(selectedAppsOutsideWork)}}</span></label>
+                  <p class="help-block" style="margin-top: 5px; margin-bottom: 10px;">
+                    Select apps that can be used outside work hours, or select "All Apps" to allow everything.
+                  </p>
+                  
+                  <div ng-if="appsLoading" style="text-align: center; padding: 20px;">
+                    <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
+                    <p>Loading applications...</p>
+                  </div>
+                  
+                  <div ng-if="!appsLoading">
+                    <!-- Search box -->
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      ng-model="outsideWorkSearchText" 
+                      placeholder="Search apps..."
+                      style="margin-bottom: 10px;">
+                    
+                    <!-- App list container -->
+                    <div style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 10px; background: #fafafa;">
+                      <!-- All apps option -->
+                      <label class="checkbox" style="margin-bottom: 8px; padding: 8px; background: #fff; border-radius: 4px; display: block; cursor: pointer;">
+                        <input 
+                          type="checkbox" 
+                          ng-model="selectedAppsOutsideWork['*']" 
+                          ng-change="toggleAllAppsOutsideWork()">
+                        <strong style="margin-left: 5px;">All Apps</strong>
+                      </label>
+                      
+                      <hr style="margin: 10px 0;">
+                      
+                      <!-- Individual apps -->
+                      <div ng-if="applications.length === 0" style="padding: 20px; text-align: center; color: #999;">
+                        No applications found
+                      </div>
+                      
+                      <label 
+                        class="checkbox" 
+                        ng-repeat="app in getFilteredAppsOutsideWork()"
+                        style="margin-bottom: 5px; padding: 8px; background: #fff; border-radius: 4px; display: block; cursor: pointer;"
+                        ng-class="{'text-muted': selectedAppsOutsideWork['*']}">
+                        <input 
+                          type="checkbox" 
+                          ng-model="selectedAppsOutsideWork[app.pkg]" 
+                          ng-change="toggleIndividualAppOutsideWork(app.pkg)"
+                          ng-disabled="selectedAppsOutsideWork['*']">
+                        <span style="margin-left: 5px;">
+                          <strong>{{app.name || app.pkg}}</strong>
+                          <br>
+                          <small style="color: #666;">{{app.pkg}}</small>
+                        </span>
+                      </label>
+                    </div>
+                  </div>
                 </div>
               </div>
 

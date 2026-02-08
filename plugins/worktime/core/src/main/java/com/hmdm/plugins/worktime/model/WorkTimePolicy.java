@@ -42,6 +42,9 @@ public class WorkTimePolicy implements Serializable {
     @ApiModelProperty("Customer ID")
     private int customerId;
 
+    @ApiModelProperty("Global policy enabled flag")
+    private Boolean enabled;
+
     // ===== NEW PRODUCTION FIELDS =====
 
     @ApiModelProperty("Policy priority (higher number = higher priority)")
@@ -180,5 +183,13 @@ public class WorkTimePolicy implements Serializable {
 
     public void setCreatedBy(Integer createdBy) {
         this.createdBy = createdBy;
+    }
+
+    public Boolean getEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(Boolean enabled) {
+        this.enabled = enabled;
     }
 }

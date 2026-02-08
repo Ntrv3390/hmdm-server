@@ -135,4 +135,113 @@
         </insert>
     </changeSet>
 
+    <!-- ========================================================= -->
+    <!-- Upgrade user override structure (add fields + indexes)  -->
+    <!-- ========================================================= -->
+    <changeSet id="worktime-update-user-override-2026-02-07" author="worktime-plugin">
+        <preConditions onFail="CONTINUE">
+            <tableExists tableName="worktime_user_override"/>
+            <not>
+                <columnExists tableName="worktime_user_override" columnName="start_time"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="worktime_user_override">
+            <column name="start_time" type="VARCHAR(5)"/>
+            <column name="end_time" type="VARCHAR(5)"/>
+            <column name="days_of_week" type="VARCHAR(50)"/>
+            <column name="allowed_apps_during_work" type="TEXT"/>
+            <column name="allowed_apps_outside_work" type="TEXT"/>
+            <column name="priority" type="INT" defaultValueNumeric="0"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- Ensure exception datetime columns exist in older schemas -->
+    <changeSet id="worktime-user-override-datetime-2026-02-07" author="worktime-plugin">
+        <preConditions onFail="CONTINUE">
+            <tableExists tableName="worktime_user_override"/>
+            <not>
+                <columnExists tableName="worktime_user_override" columnName="start_datetime"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="worktime_user_override">
+            <column name="start_datetime" type="TIMESTAMP"/>
+            <column name="end_datetime" type="TIMESTAMP"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- Ensure unique constraint per customer/user -->
+    <changeSet id="worktime-user-override-unique-constraint-2026-02-07" author="worktime-plugin">
+        <preConditions onFail="CONTINUE">
+            <tableExists tableName="worktime_user_override"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM information_schema.table_constraints WHERE table_name = 'worktime_user_override' AND constraint_name = 'uk_worktime_user_customer' AND constraint_type = 'UNIQUE'
+            </sqlCheck>
+        </preConditions>
+        <addUniqueConstraint tableName="worktime_user_override" columnNames="customer_id,user_id" constraintName="uk_worktime_user_customer"/>
+    </changeSet>
+
+    <!-- Add indexes for performance -->
+    <changeSet id="worktime-user-override-index-customer-2026-02-07" author="worktime-plugin">
+        <preConditions onFail="CONTINUE">
+            <tableExists tableName="worktime_user_override"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM pg_indexes WHERE tablename = 'worktime_user_override' AND indexname = 'idx_worktime_user_customer'
+            </sqlCheck>
+        </preConditions>
+        <createIndex indexName="idx_worktime_user_customer" tableName="worktime_user_override">
+            <column name="customer_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="worktime-user-override-index-userid-2026-02-07" author="worktime-plugin">
+        <preConditions onFail="CONTINUE">
+            <tableExists tableName="worktime_user_override"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM pg_indexes WHERE tablename = 'worktime_user_override' AND indexname = 'idx_worktime_user_userid'
+            </sqlCheck>
+        </preConditions>
+        <createIndex indexName="idx_worktime_user_userid" tableName="worktime_user_override">
+            <column name="user_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Ensure sequence/default for id in older schemas -->
+    <changeSet id="worktime-user-override-id-seq-2026-02-07" author="worktime-plugin">
+        <preConditions onFail="CONTINUE">
+            <tableExists tableName="worktime_user_override"/>
+            <not>
+                <sequenceExists sequenceName="worktime_user_override_id_seq"/>
+            </not>
+        </preConditions>
+        <createSequence sequenceName="worktime_user_override_id_seq"/>
+    </changeSet>
+
+    <changeSet id="worktime-user-override-id-default-2026-02-07" author="worktime-plugin">
+        <preConditions onFail="CONTINUE">
+            <tableExists tableName="worktime_user_override"/>
+            <not>
+                <columnExists tableName="worktime_user_override" columnName="id"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="worktime_user_override">
+            <column name="id" type="SERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="worktime-user-override-id-default-ensure-2026-02-07" author="worktime-plugin">
+        <preConditions onFail="CONTINUE">
+            <tableExists tableName="worktime_user_override"/>
+            <columnExists tableName="worktime_user_override" columnName="id"/>
+        </preConditions>
+        <addDefaultValue tableName="worktime_user_override"
+                         columnName="id"
+                         defaultValueComputed="nextval('worktime_user_override_id_seq'::regclass)"/>
+    </changeSet>
+
 </databaseChangeLog>
+
+

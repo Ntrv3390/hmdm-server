@@ -1,0 +1,344 @@
+<div ng-controller="WorkTimeUsersController" class="worktime-wrapper">
+
+  <style>
+    .worktime-wrapper {
+      margin-top: 100px;
+    }
+
+    .container-fluid {
+      padding: 25px 35px;
+    }
+
+    .nav-tabs {
+      margin-bottom: 25px;
+      border-bottom: 2px solid #337ab7;
+    }
+
+    .shadow-card {
+      border-radius: 8px;
+      border: none;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+      margin-bottom: 25px;
+    }
+
+    .panel-heading {
+      background: #f7f9fc;
+      border-bottom: 1px solid #e5e8ec;
+      border-radius: 8px 8px 0 0;
+    }
+
+    .panel-title {
+      font-weight: 600;
+      font-size: 18px;
+    }
+
+    .panel-body {
+      padding: 25px;
+    }
+
+    .user-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 0;
+      border-bottom: 1px solid #e5e8ec;
+    }
+
+    .user-row:last-child {
+      border-bottom: none;
+    }
+
+    .user-info {
+      flex: 1;
+    }
+
+    .user-toggle {
+      margin: 0 15px;
+    }
+
+    .user-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .exception-list {
+      margin-top: 15px;
+      padding: 10px;
+      background: #f9f9f9;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .exception-item {
+      padding: 8px;
+      background: white;
+      border-left: 3px solid #337ab7;
+      margin-bottom: 8px;
+      border-radius: 2px;
+    }
+
+    .alert {
+      margin-top: 20px;
+    }
+
+    .text-muted-center {
+      text-align: center;
+      padding: 30px 0;
+      color: #888;
+    }
+  </style>
+
+  <div class="container-fluid">
+
+    <!-- Tabs -->
+    <div class="row">
+      <div class="col-md-12">
+        <ul class="nav nav-tabs" role="tablist">
+          <li role="presentation">
+            <a href="/#/plugin-worktime" style="color: #666; font-weight: 600;">
+              Global Policy
+            </a>
+          </li>
+          <li role="presentation" class="active">
+            <a href="/#/plugin-worktime/users" style="color: #337ab7; font-weight: 600;">
+              User Exceptions
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div class="row" ng-if="error">
+      <div class="col-md-12">
+        <div class="alert alert-danger">
+          {{error}}
+        </div>
+      </div>
+    </div>
+
+    <!-- Global Policy -->
+    <div class="row">
+      <div class="col-md-12">
+        <div class="panel panel-default shadow-card">
+          <div class="panel-heading">
+            <h3 class="panel-title">
+              <i class="glyphicon glyphicon-question-sign"></i>
+              Current Global Policy Status
+            </h3>
+          </div>
+
+          <div class="panel-body">
+            <div class="row">
+              <div class="col-md-6">
+                <p>
+                  <strong>Global Enforcement:</strong>
+                  <span ng-if="globalPolicy.enabled" class="label label-success">ON</span>
+                  <span ng-if="!globalPolicy.enabled" class="label label-info">OFF</span>
+                </p>
+                <p>
+                  <strong>Working Hours:</strong>
+                  {{globalPolicy.startTime}} - {{globalPolicy.endTime}}
+                </p>
+              </div>
+
+              <div class="col-md-6">
+                <p>
+                  <strong>Working Days:</strong>
+                  <em>Based on global configuration</em>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Exceptions -->
+    <div class="row">
+      <div class="col-md-12">
+        <div class="panel panel-default shadow-card">
+          <div class="panel-heading">
+            <h3 class="panel-title">
+              <i class="glyphicon glyphicon-user"></i>
+              User Exceptions
+            </h3>
+          </div>
+
+          <div class="panel-body">
+
+            <!-- Users -->
+            <div ng-repeat="user in users" class="user-row">
+
+              <div class="user-info">
+                <strong>{{user.userName || 'User ' + user.userId}}</strong>
+                <div class="text-muted" style="font-size: 11px; margin-top: 5px;">
+                  ID: {{user.userId}}
+                </div>
+
+                <div ng-if="user.exceptions && user.exceptions.length > 0" class="exception-list">
+                  <div style="font-weight: 600; margin-bottom: 8px; color: #d9534f;">
+                    Active Exceptions:
+                  </div>
+
+                  <div ng-repeat="exc in user.exceptions" class="exception-item">
+                    {{exc.dateFrom | date:'MMM dd, yyyy'}} -
+                    {{exc.dateTo | date:'MMM dd, yyyy'}} |
+                    {{exc.timeFrom}} - {{exc.timeTo}}
+
+                    <button
+                      class="btn btn-xs btn-danger"
+                      ng-click="removeException(user, exc)"
+                      style="float: right; margin-left: 5px;"
+                    >
+                      <i class="glyphicon glyphicon-trash"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="user-toggle">
+                <label class="checkbox-inline" style="margin: 0;">
+                  <input
+                    type="checkbox"
+                    ng-model="user.toggleOn"
+                    ng-change="toggleUserException(user)"
+                    ng-disabled="!canEdit || !globalPolicy.enabled"
+                  >
+                  <span
+                    ng-if="user.toggleOn"
+                    class="text-success"
+                  >ON</span>
+                  <span
+                    ng-if="!user.toggleOn"
+                    class="text-danger"
+                  >OFF</span>
+                </label>
+              </div>
+
+              <div
+                class="user-actions"
+                ng-if="canEdit && user.exceptions && user.exceptions.length > 0 && globalPolicy.enabled"
+              >
+                <button
+                  class="btn btn-sm btn-primary"
+                  ng-click="editException(user)"
+                >
+                  <i class="glyphicon glyphicon-edit"></i> Edit
+                </button>
+              </div>
+
+            </div>
+
+            <!-- Empty State -->
+            <div ng-if="users.length === 0" class="text-muted-center">
+              No users found
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="text/ng-template" id="worktimeExceptionModalTemplate.html">
+    <div class="modal-header">
+      <button type="button" class="close" ng-click="cancelException()">&times;</button>
+      <h4 class="modal-title">
+        <span ng-if="!editingException.id">
+          Create Exception for {{editingUser.userName}}
+        </span>
+        <span ng-if="editingException.id">
+          Edit Exception for {{editingUser.userName}}
+        </span>
+      </h4>
+    </div>
+
+    <div class="modal-body">
+      <form name="exceptionForm">
+
+        <div class="alert alert-info">
+          <strong>Note:</strong>
+          This exception will turn OFF work time enforcement for the selected
+          user during the specified dates and times.
+        </div>
+
+        <div class="form-group">
+          <label>Exception Name (optional)</label>
+          <input
+            class="form-control"
+            ng-model="editingException.name"
+            placeholder="e.g., Vacation, Weekend, etc."
+          />
+        </div>
+
+        <div class="row">
+          <div class="col-sm-6">
+            <label>Start Date</label>
+            <input
+              type="date"
+              class="form-control"
+              ng-model="editingException.dateFrom"
+              required
+            />
+          </div>
+
+          <div class="col-sm-6">
+            <label>End Date</label>
+            <input
+              type="date"
+              class="form-control"
+              ng-model="editingException.dateTo"
+              required
+            />
+          </div>
+        </div>
+
+        <div class="row" style="margin-top: 15px;">
+          <div class="col-sm-6">
+            <label>Time From</label>
+            <input
+              type="time"
+              class="form-control"
+              ng-model="editingException.timeFrom"
+            />
+          </div>
+
+          <div class="col-sm-6">
+            <label>Time To</label>
+            <input
+              type="time"
+              class="form-control"
+              ng-model="editingException.timeTo"
+            />
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 15px;">
+          <label>Notes (optional)</label>
+          <textarea
+            class="form-control"
+            ng-model="editingException.notes"
+            rows="3"
+            placeholder="Add notes about this exception"
+          ></textarea>
+        </div>
+
+      </form>
+    </div>
+
+    <div class="modal-footer">
+      <button
+        type="button"
+        class="btn btn-primary"
+        ng-if="canEdit"
+        ng-click="saveException()"
+      >
+        <i class="glyphicon glyphicon-floppy-disk"></i> Save Exception
+      </button>
+      <button type="button" class="btn btn-default" ng-click="cancelException()">Close</button>
+    </div>
+  </script>
+
+</div>

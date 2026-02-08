@@ -547,7 +547,42 @@ Authorization: Bearer <jwt_token>
 - `404 Not Found` - No policy configured for customer
 
 ---
+ 
+#### User override endpoints (admin only)
 
+These endpoints allow administrators to manage per-user worktime overrides. All endpoints under `/rest/plugins/worktime/private/*` require the caller to have the `worktime` permission (in addition to JWT auth and IP filters configured for private paths).
+
+- GET `/rest/plugins/worktime/private/users`
+  - Description: List all user overrides for current customer
+  - Response: JSON array of `WorkTimeUserOverride` objects
+
+- GET `/rest/plugins/worktime/private/users/{userId}`
+  - Description: Get override for a specific user
+
+- POST `/rest/plugins/worktime/private/users/{userId}`
+  - Description: Create or update override for a user
+  - Body: `WorkTimeUserOverride` JSON
+
+- DELETE `/rest/plugins/worktime/private/users/{userId}`
+  - Description: Remove override for a user
+
+All user override endpoints are admin-only and enforce the `worktime` permission on the server side.
+
+---
+
+#### Public endpoints (for devices / launcher)
+
+These endpoints are available under `/rest/plugins/worktime/public/*` and are intentionally left outside the admin filters so that devices (or the launcher) can query the effective policy or check whether a specific app is allowed for a user.
+
+- GET `/rest/plugins/worktime/public/policy/effective/{userId}`
+  - Description: Returns the resolved effective policy for specified `userId` (considers global policy and per-user override)
+  - Query params: optional `customerId` (when caller is not authenticated)
+
+- GET `/rest/plugins/worktime/public/allowed?userId={uid}&pkg={package.name}&customerId={cid}`
+  - Description: Returns boolean `true`/`false` indicating whether the specified app `pkg` is allowed for the `userId` at current server time.
+  - Notes: `customerId` optional when request is authenticated; otherwise required.
+
+Security note: Public endpoints are purposely not protected by admin-only filters; if you need to restrict access to devices only, add appropriate authentication (shared secret, device token) or restrict by IP in `WorkTimeRestModule`.
 #### 2. POST /rest/plugins/worktime/private/policy
 
 **Description:** Create or update the global work time policy

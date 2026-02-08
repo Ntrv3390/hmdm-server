@@ -3,6 +3,7 @@ package com.hmdm.plugins.worktime.guice.module;
 import com.google.inject.servlet.ServletModule;
 import com.hmdm.plugin.rest.PluginAccessFilter;
 import com.hmdm.plugins.worktime.rest.resource.WorkTimeResource;
+import com.hmdm.plugins.worktime.rest.resource.WorkTimePublicResource;
 import com.hmdm.rest.filter.AuthFilter;
 import com.hmdm.rest.filter.PrivateIPFilter;
 import com.hmdm.security.jwt.JWTFilter;
@@ -14,7 +15,7 @@ public class WorkTimeRestModule extends ServletModule {
 
     // URLs requiring authentication (admin panel)
     private static final List<String> protectedResources = Arrays.asList(
-        "/rest/plugins/worktime/*");
+        "/rest/plugins/worktime/private/*");
 
     public WorkTimeRestModule() {
     }
@@ -29,5 +30,11 @@ public class WorkTimeRestModule extends ServletModule {
 
         // Bind REST resource classes
         this.bind(WorkTimeResource.class);
+        this.bind(WorkTimePublicResource.class);
+
+        // Bind service
+        this.bind(com.hmdm.plugins.worktime.service.WorkTimeService.class);
+        // Bind sync hook so device sync responses can be filtered by worktime rules
+        this.bind(com.hmdm.plugins.worktime.sync.WorkTimeSyncResponseHook.class);
     }
 }
