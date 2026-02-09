@@ -1,306 +1,339 @@
 <div ng-controller="WorkTimePoliciesController" class="worktime-wrapper">
-
   <style>
     .worktime-wrapper {
-      margin-top: 20px;
+      margin-top: 25px;
+      font-family: "Segoe UI", Roboto, sans-serif;
+      color: #2c3e50;
     }
 
     .shadow-card {
-      border-radius: 8px;
+      border-radius: 14px;
       border: none;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+      background: #ffffff;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+    }
+
+    .panel-heading {
+      background: #7a9ab9;
+      color: white;
+      border: none;
+      padding: 18px 25px;
+    }
+
+    .panel-title {
+      font-weight: 600;
+      font-size: 20px;
+    }
+
+    .panel-body {
+      padding: 30px;
+      background: #f7f9fc;
     }
 
     .section {
-      margin-bottom: 20px;
+      margin-bottom: 30px;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     }
 
     .section-title {
       margin-bottom: 15px;
       font-weight: 600;
-      color: #444;
+      font-size: 16px;
+      color: #2c3e50;
+    }
+
+    .nav-tabs {
+      border-bottom: none;
+      margin-bottom: 25px;
+    }
+
+    .nav-tabs > li > a {
+      border: none;
+      border-radius: 20px;
+      padding: 8px 18px;
+      margin-right: 8px;
+      background: #eef2f7;
+      color: #555;
+      font-weight: 500;
+    }
+
+    .nav-tabs > li.active > a {
+      background: #7a9ab9;
+      color: white !important;
+    }
+
+    .form-control {
+      border-radius: 10px;
+      border: 1px solid #e1e6ef;
+      height: 42px;
+    }
+
+    .form-control:focus {
+      border-color: #7a9ab9;
+      box-shadow: 0 0 0 2px rgba(122, 154, 185, 0.25);
     }
 
     .day-toggle-group {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 10px;
     }
 
     .day-toggle {
-      min-width: 60px;
-      border-radius: 20px;
-      transition: all 0.2s ease;
-    }
-
-    .day-toggle:hover {
-      transform: translateY(-1px);
+      min-width: 70px;
+      border-radius: 25px;
+      border: 1px solid #dce2ea;
+      background: #fff;
+      padding: 6px 14px;
+      font-weight: 500;
     }
 
     .active-day {
-      background-color: #337ab7;
-      border-color: #2e6da4;
+      background: #7a9ab9;
+      border: none;
       color: white;
+    }
+
+    .app-container {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #e3e8f0;
+      border-radius: 10px;
+      padding: 12px;
+      background: #f9fbff;
+    }
+
+    .app-item {
+      margin-bottom: 6px;
+      padding: 10px;
+      background: white;
+      border-radius: 8px;
+      display: block;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border: 1px solid transparent;
+    }
+
+    .app-item:hover {
+      border-color: #7a9ab9;
+      background: #f1f5ff;
+    }
+
+    .app-item.text-muted {
+      opacity: 0.5;
+    }
+
+    .badge {
+      background: #7a9ab9;
+      font-weight: 500;
+      padding: 5px 8px;
+      border-radius: 10px;
     }
 
     .form-actions {
       margin-top: 25px;
+      padding: 15px 20px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+      position: sticky;
+      bottom: 10px;
     }
 
-    .panel-heading {
-      background: #f7f9fc;
-      border-bottom: 1px solid #e5e8ec;
-      border-radius: 8px 8px 0 0;
+    .btn {
+      border-radius: 20px;
+      padding: 8px 18px;
+      font-weight: 500;
     }
 
-    .panel-title {
-      font-weight: 600;
-      font-size: 18px;
+    .btn-success {
+      background: #7a9ab9;
+      border: none;
+      color: white;
     }
 
-    .panel-body {
-      padding: 25px;
-    }
-
-    .form-control.input-lg {
-      height: 45px;
-      font-size: 16px;
+    .btn-success:hover {
+      background: #6a8aa8;
     }
   </style>
 
   <div class="container-fluid">
-    <div class="row">
-      <div class="col-md-12">
-        <!-- Navigation Tabs -->
-        <ul class="nav nav-tabs" role="tablist" style="margin-bottom: 20px;">
-          <li role="presentation" class="active">
-            <a href="/#/plugin-worktime" style="color: #337ab7; font-weight: 600;">Global Policy</a>
-          </li>
-          <li role="presentation">
-            <a href="/#/plugin-worktime/users" style="color: #666; font-weight: 600;">User Exceptions</a>
-          </li>
-        </ul>
+    <!-- Tabs -->
+    <ul class="nav nav-tabs">
+      <li class="active">
+        <a href="/#/plugin-worktime">Global Policy</a>
+      </li>
+      <li>
+        <a href="/#/plugin-worktime/users">User Exceptions</a>
+      </li>
+    </ul>
+
+    <div class="panel panel-default shadow-card">
+      <div class="panel-heading">
+        <h3 class="panel-title">
+          <i class="glyphicon glyphicon-time"></i>
+          Global Work Time Policy
+        </h3>
       </div>
-    </div>
-    <div class="row">
-      <div class="col-md-12">
-        <div class="panel panel-default shadow-card">
 
-          <!-- Header -->
-          <div class="panel-heading">
-            <h3 class="panel-title">
-              <i class="glyphicon glyphicon-time"></i>
-              Global Work Time Policy
-            </h3>
-          </div>
+      <div class="panel-body">
+        <div class="alert alert-success" ng-if="success">{{success}}</div>
+        <div class="alert alert-danger" ng-if="error">{{error}}</div>
 
-          <div class="panel-body">
-
-            <!-- Success Message -->
-            <div class="alert alert-success" ng-if="success">
-              <i class="glyphicon glyphicon-ok"></i> {{success}}
-            </div>
-
-            <!-- Error -->
-            <div class="alert alert-danger" ng-if="error">
-              <i class="glyphicon glyphicon-exclamation-sign"></i> {{error}}
-            </div>
-
-            <!-- Enabled Toggle -->
-            <div class="form-group">
-              <label class="control-label">Policy Enabled</label>
-              <div>
-                <label class="checkbox-inline">
-                  <input type="checkbox" ng-model="policy.enabled"> Enable enforcement
-                </label>
-              </div>
-            </div>
-            <!-- Form -->
-            <form class="form-horizontal" ng-if="policy">
-
-              <!-- Time Section -->
-              <div class="section">
-                <h4 class="section-title">Working Hours</h4>
-
-                <div class="row">
-                  <div class="col-sm-6">
-                    <label>Start time</label>
-                    <input
-                      type="text"
-                      class="form-control input-lg"
-                      ng-model="policy.startTime"
-                      placeholder="HH:mm">
-                  </div>
-
-                  <div class="col-sm-6">
-                    <label>End time</label>
-                    <input
-                      type="text"
-                      class="form-control input-lg"
-                      ng-model="policy.endTime"
-                      placeholder="HH:mm">
-                  </div>
-                </div>
-              </div>
-
-              <hr>
-
-              <!-- Days Section -->
-              <div class="section">
-                <h4 class="section-title">Working Days</h4>
-
-                <div class="day-toggle-group">
-                  <button
-                    type="button"
-                    class="btn day-toggle"
-                    ng-repeat="day in days"
-                    ng-class="{'btn-primary active-day': hasDay(day.id)}"
-                    ng-click="toggleDay(day.id)">
-                    {{day.label}}
-                  </button>
-                </div>
-              </div>
-
-              <hr>
-
-              <!-- Allowed Apps -->
-              <div class="section">
-                <h4 class="section-title">App Access Rules</h4>
-
-                <div class="form-group">
-                  <label>Allowed during work <span class="badge">{{countSelected(selectedAppsDuringWork)}}</span></label>
-                  <p class="help-block" style="margin-top: 5px; margin-bottom: 10px;">
-                    Select apps that can be used during work hours, or select "All Apps" to allow everything.
-                  </p>
-                  
-                  <div ng-if="appsLoading" style="text-align: center; padding: 20px;">
-                    <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
-                    <p>Loading applications...</p>
-                  </div>
-                  
-                  <div ng-if="!appsLoading">
-                    <!-- Search box -->
-                    <input 
-                      type="text" 
-                      class="form-control" 
-                      ng-model="duringWorkSearchText" 
-                      placeholder="Search apps..."
-                      style="margin-bottom: 10px;">
-                    
-                    <!-- App list container -->
-                    <div style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 10px; background: #fafafa;">
-                      <!-- All apps option -->
-                      <label class="checkbox" style="margin-bottom: 8px; padding: 8px; background: #fff; border-radius: 4px; display: block; cursor: pointer;">
-                        <input 
-                          type="checkbox" 
-                          ng-model="selectedAppsDuringWork['*']" 
-                          ng-change="toggleAllAppsDuringWork()">
-                        <strong style="margin-left: 5px;">All Apps</strong>
-                      </label>
-                      
-                      <hr style="margin: 10px 0;">
-                      
-                      <!-- Individual apps -->
-                      <div ng-if="applications.length === 0" style="padding: 20px; text-align: center; color: #999;">
-                        No applications found
-                      </div>
-                      
-                      <label 
-                        class="checkbox" 
-                        ng-repeat="app in getFilteredAppsDuringWork()"
-                        style="margin-bottom: 5px; padding: 8px; background: #fff; border-radius: 4px; display: block; cursor: pointer;"
-                        ng-class="{'text-muted': selectedAppsDuringWork['*']}">
-                        <input 
-                          type="checkbox" 
-                          ng-model="selectedAppsDuringWork[app.pkg]" 
-                          ng-change="toggleIndividualAppDuringWork(app.pkg)"
-                          ng-disabled="selectedAppsDuringWork['*']">
-                        <span style="margin-left: 5px;">
-                          <strong>{{app.name || app.pkg}}</strong>
-                          <br>
-                          <small style="color: #666;">{{app.pkg}}</small>
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="form-group">
-                  <label>Allowed outside work <span class="badge">{{countSelected(selectedAppsOutsideWork)}}</span></label>
-                  <p class="help-block" style="margin-top: 5px; margin-bottom: 10px;">
-                    Select apps that can be used outside work hours, or select "All Apps" to allow everything.
-                  </p>
-                  
-                  <div ng-if="appsLoading" style="text-align: center; padding: 20px;">
-                    <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i>
-                    <p>Loading applications...</p>
-                  </div>
-                  
-                  <div ng-if="!appsLoading">
-                    <!-- Search box -->
-                    <input 
-                      type="text" 
-                      class="form-control" 
-                      ng-model="outsideWorkSearchText" 
-                      placeholder="Search apps..."
-                      style="margin-bottom: 10px;">
-                    
-                    <!-- App list container -->
-                    <div style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 10px; background: #fafafa;">
-                      <!-- All apps option -->
-                      <label class="checkbox" style="margin-bottom: 8px; padding: 8px; background: #fff; border-radius: 4px; display: block; cursor: pointer;">
-                        <input 
-                          type="checkbox" 
-                          ng-model="selectedAppsOutsideWork['*']" 
-                          ng-change="toggleAllAppsOutsideWork()">
-                        <strong style="margin-left: 5px;">All Apps</strong>
-                      </label>
-                      
-                      <hr style="margin: 10px 0;">
-                      
-                      <!-- Individual apps -->
-                      <div ng-if="applications.length === 0" style="padding: 20px; text-align: center; color: #999;">
-                        No applications found
-                      </div>
-                      
-                      <label 
-                        class="checkbox" 
-                        ng-repeat="app in getFilteredAppsOutsideWork()"
-                        style="margin-bottom: 5px; padding: 8px; background: #fff; border-radius: 4px; display: block; cursor: pointer;"
-                        ng-class="{'text-muted': selectedAppsOutsideWork['*']}">
-                        <input 
-                          type="checkbox" 
-                          ng-model="selectedAppsOutsideWork[app.pkg]" 
-                          ng-change="toggleIndividualAppOutsideWork(app.pkg)"
-                          ng-disabled="selectedAppsOutsideWork['*']">
-                        <span style="margin-left: 5px;">
-                          <strong>{{app.name || app.pkg}}</strong>
-                          <br>
-                          <small style="color: #666;">{{app.pkg}}</small>
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Buttons -->
-              <div class="form-actions text-right">
-                <button class="btn btn-default" ng-click="refresh()">
-                  Reload
-                </button>
-                <button class="btn btn-success" ng-click="save()">
-                  <i class="glyphicon glyphicon-floppy-disk"></i>
-                  Save Policy
-                </button>
-              </div>
-
-            </form>
-
-          </div>
+        <!-- Enable -->
+        <div class="section">
+          <label>
+            <input type="checkbox" ng-model="policy.enabled" />
+            Enable enforcement
+          </label>
         </div>
+
+        <form ng-if="policy">
+          <!-- Time -->
+          <div class="section">
+            <h4 class="section-title">Working Hours</h4>
+            <div class="row">
+              <div class="col-sm-6">
+                <label>Start time</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  ng-model="policy.startTime"
+                  placeholder="HH:mm"
+                />
+              </div>
+              <div class="col-sm-6">
+                <label>End time</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  ng-model="policy.endTime"
+                  placeholder="HH:mm"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Days -->
+          <div class="section">
+            <h4 class="section-title">Working Days</h4>
+            <div class="day-toggle-group">
+              <button
+                type="button"
+                class="btn day-toggle"
+                ng-repeat="day in days"
+                ng-class="{'active-day': hasDay(day.id)}"
+                ng-click="toggleDay(day.id)"
+              >
+                {{day.label}}
+              </button>
+            </div>
+          </div>
+
+          <!-- Apps During Work -->
+          <div class="section">
+            <h4 class="section-title">
+              Allowed during work
+              <span class="badge"
+                >{{countSelected(selectedAppsDuringWork)}}</span
+              >
+            </h4>
+
+            <input
+              type="text"
+              class="form-control"
+              ng-model="duringWorkSearchText"
+              placeholder="Search apps..."
+              style="margin-bottom: 10px"
+            />
+
+            <div class="app-container">
+              <!-- All apps -->
+              <label class="app-item">
+                <input
+                  type="checkbox"
+                  ng-model="selectedAppsDuringWork['*']"
+                  ng-change="toggleAllAppsDuringWork()"
+                />
+                <strong> All Apps</strong>
+              </label>
+
+              <label
+                class="app-item"
+                ng-repeat="app in getFilteredAppsDuringWork()"
+                ng-class="{'text-muted': selectedAppsDuringWork['*']}"
+              >
+                <input
+                  type="checkbox"
+                  ng-model="selectedAppsDuringWork[app.pkg]"
+                  ng-change="toggleIndividualAppDuringWork(app.pkg)"
+                  ng-disabled="selectedAppsDuringWork['*']"
+                />
+                <strong>{{app.name || app.pkg}}</strong>
+                <br />
+                <small>{{app.pkg}}</small>
+              </label>
+            </div>
+          </div>
+
+          <!-- Apps Outside Work -->
+          <div class="section">
+            <h4 class="section-title">
+              Allowed outside work
+              <span class="badge"
+                >{{countSelected(selectedAppsOutsideWork)}}</span
+              >
+            </h4>
+
+            <input
+              type="text"
+              class="form-control"
+              ng-model="outsideWorkSearchText"
+              placeholder="Search apps..."
+              style="margin-bottom: 10px"
+            />
+
+            <div class="app-container">
+              <label class="app-item">
+                <input
+                  type="checkbox"
+                  ng-model="selectedAppsOutsideWork['*']"
+                  ng-change="toggleAllAppsOutsideWork()"
+                />
+                <strong> All Apps</strong>
+              </label>
+
+              <label
+                class="app-item"
+                ng-repeat="app in getFilteredAppsOutsideWork()"
+                ng-class="{'text-muted': selectedAppsOutsideWork['*']}"
+              >
+                <input
+                  type="checkbox"
+                  ng-model="selectedAppsOutsideWork[app.pkg]"
+                  ng-change="toggleIndividualAppOutsideWork(app.pkg)"
+                  ng-disabled="selectedAppsOutsideWork['*']"
+                />
+                <strong>{{app.name || app.pkg}}</strong>
+                <br />
+                <small>{{app.pkg}}</small>
+              </label>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="form-actions text-right">
+            <button class="btn btn-default" ng-click="refresh()">Reload</button>
+            <button class="btn btn-success" ng-click="save()">
+              Save Policy
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
-
 </div>

@@ -71,6 +71,8 @@ The Worktime Plugin manages work-time policies for Android devices managed by He
 | **Migrations**       | Liquibase (database versioning and schema management)                                   |
 | **JSON Processing** | Jackson (Jackson Databind & Jackson Annotations)                                       |
 | **API Documentation** | Swagger/Springfox annotations for OpenAPI documentation                                |
+| **Scheduling**       | Background task runner for cleanup jobs                                                 |
+| **Sync Hooks**       | Device sync response hooks for policy delivery                                          |
 
 ### Frontend Technologies
 
@@ -160,15 +162,27 @@ hmdm-server/
 │       │           │       ├── model/                                   # Domain Models
 │       │           │       │   ├── WorkTimePolicy.java                # Work time policy definition
 │       │           │       │   ├── WorkTimePolicyDeviceGroup.java     # Policy device group mapping
-│       │           │       │   └── GlobalWorkTimePolicy.java          # Global policy settings
+│       │           │       │   ├── GlobalWorkTimePolicy.java          # Global policy settings
+│       │           │       │   └── WorkTimeUserOverride.java          # Per-user override model
+│       │           │       │
+│       │           │       ├── service/                                 # Business Logic Layer
+│       │           │       │   ├── WorkTimeService.java               # Core business logic
+│       │           │       │   └── EffectiveWorkTimePolicy.java       # Resolved policy model
 │       │           │       │
 │       │           │       ├── persistence/                             # Data Access Layer
 │       │           │       │   ├── WorkTimeDAO.java                   # DAO Interface (contract)
 │       │           │       │   └── WorkTimePersistenceConfiguration.java # Persistence config interface
 │       │           │       │
+│       │           │       ├── sync/                                    # Device Sync Integration
+│       │           │       │   └── WorkTimeSyncResponseHook.java      # Sync response hook
+│       │           │       │
+│       │           │       ├── task/                                    # Background Tasks
+│       │           │       │   └── ExpiredExceptionCleanupTask.java   # Cleanup expired exceptions
+│       │           │       │
 │       │           │       ├── rest/
 │       │           │       │   └── resource/                            # REST Endpoints
-│       │           │       │       └── WorkTimeResource.java           # REST resource class
+│       │           │       │       ├── WorkTimeResource.java           # Admin REST endpoints
+│       │           │       │       └── WorkTimePublicResource.java     # Public device endpoints
 │       │           │       │
 │       │           │       └── guice/
 │       │           │           └── module/                              # Guice Dependency Injection
@@ -199,9 +213,8 @@ hmdm-server/
 │       │       │   │           │       └── PostgresWorkTimeMapper.xml   # SQL XML mappings
 │       │       │   │           │
 │       │       │   │           └── guice/module/                        # Postgres DI
-│       │       │   │               ├── WorkTimePostgresLiquibaseModule.java
-│       │       │   │               ├── WorkTimePostgresPersistenceModule.java
-│       │       │   │               └── WorkTimePostgresServiceModule.java
+│       │       │   │               ├── WorkTimePostgresLiquibaseModule.java  # Liquibase config
+│       │       │   │               └── WorkTimePostgresPersistenceModule.java # MyBatis & DAO binding
 │       │       │   │
 │       │       │   └── resources/
 │       │       │       └── liquibase/
@@ -350,11 +363,81 @@ Properties:
 └── customerId: Integer                  # Customer ID
 ```
 
+#### 2.4 WorkTimeUserOverride
+
+**File:** [plugins/worktime/core/src/main/java/com/hmdm/plugins/worktime/model/WorkTimeUserOverride.java](plugins/worktime/core/src/main/java/com/hmdm/plugins/worktime/model/WorkTimeUserOverride.java)
+
+Per-user policy override (allows custom work time settings and temporary exceptions):
+
+```
+Properties:
+├── id: Integer                          # Override ID
+├── customerId: Integer                  # Customer ID
+├── userId: Integer                      # User ID
+├── userName: String                     # User name (for display)
+├── enabled: Boolean                     # Override enabled flag
+├── startTime: String                    # Custom start time (HH:mm)
+├── endTime: String                      # Custom end time (HH:mm)
+├── daysOfWeek: String                   # Days bitmask or CSV
+├── allowedAppsDuringWork: String        # Custom apps during work
+├── allowedAppsOutsideWork: String       # Custom apps outside work
+├── startDateTime: Timestamp             # Exception start (temporary disable)
+├── endDateTime: Timestamp               # Exception end (temporary disable)
+├── priority: Integer                    # Override priority
+├── createdAt: Timestamp                 # Creation timestamp
+└── updatedAt: Timestamp                 # Last update timestamp
+```
+
 ---
 
-### 3. Data Access Layer
+### 3. Service Layer
 
-#### 3.1 WorkTimeDAO Interface
+#### 3.1 WorkTimeService
+
+**File:** [plugins/worktime/core/src/main/java/com/hmdm/plugins/worktime/service/WorkTimeService.java](plugins/worktime/core/src/main/java/com/hmdm/plugins/worktime/service/WorkTimeService.java)
+
+Core business logic for resolving effective policies:
+
+**Key Methods:**
+```java
+// Resolve effective policy for a user considering global policy and overrides
+EffectiveWorkTimePolicy resolveEffectivePolicy(int customerId, int userId, LocalDateTime now)
+
+// Check if a specific app is allowed for a user at the current time
+boolean isAppAllowed(int customerId, int userId, String packageName, LocalDateTime now)
+
+// Check if current time is within work hours
+boolean isWorkTime(String startTime, String endTime, int daysOfWeek, LocalDateTime now)
+```
+
+**Responsibilities:**
+- Merges global policy with user-specific overrides
+- Handles temporary exceptions (startDateTime/endDateTime)
+- Resolves effective app permissions
+- Cleans up expired exceptions
+- Applies priority-based policy resolution
+
+#### 3.2 EffectiveWorkTimePolicy
+
+**File:** [plugins/worktime/core/src/main/java/com/hmdm/plugins/worktime/service/EffectiveWorkTimePolicy.java](plugins/worktime/core/src/main/java/com/hmdm/plugins/worktime/service/EffectiveWorkTimePolicy.java)
+
+Resolved policy after merging global and user-specific overrides:
+
+```
+Properties:
+├── enabled: boolean                     # Enforcement enabled
+├── startTime: String                    # Effective start time
+├── endTime: String                      # Effective end time
+├── daysOfWeek: int                      # Effective days bitmask
+├── allowedAppsDuringWork: Set<String>   # Resolved apps during work
+└── allowedAppsOutsideWork: Set<String>  # Resolved apps outside work
+```
+
+---
+
+### 4. Data Access Layer
+
+#### 4.1 WorkTimeDAO Interface
 
 **File:** [plugins/worktime/core/src/main/java/com/hmdm/plugins/worktime/persistence/WorkTimeDAO.java](plugins/worktime/core/src/main/java/com/hmdm/plugins/worktime/persistence/WorkTimeDAO.java)
 
@@ -362,18 +445,26 @@ Defines data access contracts (database-agnostic):
 
 ```java
 public interface WorkTimeDAO {
-    GlobalWorkTimePolicy getGlobalPolicy(int customerId);
-    void saveGlobalPolicy(GlobalWorkTimePolicy policy);
+    // Global policy
+    WorkTimePolicy getGlobalPolicy(int customerId);
+    void saveGlobalPolicy(WorkTimePolicy policy);
+    
+    // User overrides
+    List<WorkTimeUserOverride> getUserOverrides(int customerId);
+    WorkTimeUserOverride getUserOverride(int customerId, int userId);
+    void saveUserOverride(WorkTimeUserOverride override);
+    void deleteUserOverride(int customerId, int userId);
+    List<WorkTimeUserOverride> getAllUserOverrides(); // For cleanup task
 }
 ```
 
-#### 3.2 PostgresWorkTimeDAO
+#### 4.2 PostgresWorkTimeDAO
 
 **File:** [plugins/worktime/postgres/src/main/java/com/hmdm/plugins/worktime/persistence/postgres/dao/PostgresWorkTimeDAO.java](plugins/worktime/postgres/src/main/java/com/hmdm/plugins/worktime/persistence/postgres/dao/PostgresWorkTimeDAO.java)
 
-PostgreSQL-specific implementation of WorkTimeDAO.
+PostgreSQL-specific implementation of WorkTimeDAO using MyBatis.
 
-#### 3.3 MyBatis Mapper
+#### 4.3 MyBatis Mapper
 
 **Files:**
 - Mapper Interface: [plugins/worktime/postgres/src/main/java/com/hmdm/plugins/worktime/persistence/postgres/dao/mapper/PostgresWorkTimeMapper.java](plugins/worktime/postgres/src/main/java/com/hmdm/plugins/worktime/persistence/postgres/dao/mapper/PostgresWorkTimeMapper.java)
@@ -381,17 +472,82 @@ PostgreSQL-specific implementation of WorkTimeDAO.
 
 ---
 
-### 4. REST Resources
+### 5. Device Sync Integration
 
-**File:** [plugins/worktime/core/src/main/java/com/hmdm/plugins/worktime/rest/resource/WorkTimeResource.java](plugins/worktime/core/src/main/java/com/hmdm/plugins/worktime/rest/resource/WorkTimeResource.java)
+#### 5.1 WorkTimeSyncResponseHook
 
-REST endpoint resource class (see [REST API Endpoints](#rest-api-endpoints) section for details).
+**File:** [plugins/worktime/core/src/main/java/com/hmdm/plugins/worktime/sync/WorkTimeSyncResponseHook.java](plugins/worktime/core/src/main/java/com/hmdm/plugins/worktime/sync/WorkTimeSyncResponseHook.java)
+
+Integrates with device sync process to deliver policies to devices:
+
+```java
+@Singleton
+public class WorkTimeSyncResponseHook implements SyncResponseHook {
+    @Override
+    public SyncResponseInt handle(int deviceId, SyncResponseInt original) {
+        // Resolves device to customer/user
+        // Adds effective worktime policy to sync response
+        // Devices receive policy updates automatically
+    }
+}
+```
+
+**Purpose:**
+- Automatically includes worktime policy in device sync responses
+- Ensures devices have up-to-date policy information
+- No manual policy push required
 
 ---
 
-### 5. Guice Modules
+### 6. Background Tasks
 
-#### 5.1 WorkTimeRestModule
+#### 6.1 ExpiredExceptionCleanupTask
+
+**File:** [plugins/worktime/core/src/main/java/com/hmdm/plugins/worktime/task/ExpiredExceptionCleanupTask.java](plugins/worktime/core/src/main/java/com/hmdm/plugins/worktime/task/ExpiredExceptionCleanupTask.java)
+
+Periodic cleanup task for expired temporary exceptions:
+
+```java
+@Singleton
+public class ExpiredExceptionCleanupTask {
+    public void cleanupExpiredExceptions() {
+        // Scans all user overrides
+        // Deletes overrides with expired exception windows
+        // Prevents database bloat
+    }
+}
+```
+
+**Scheduling:**
+- Runs periodically via BackgroundTaskRunnerService
+- Checks all customers/users for expired exceptions
+- Removes expired overrides automatically
+
+---
+
+### 7. REST Resources
+
+#### 7.1 WorkTimeResource (Admin Endpoints)
+
+**File:** [plugins/worktime/core/src/main/java/com/hmdm/plugins/worktime/rest/resource/WorkTimeResource.java](plugins/worktime/core/src/main/java/com/hmdm/plugins/worktime/rest/resource/WorkTimeResource.java)
+
+Admin-only REST endpoints (see [REST API Endpoints](#rest-api-endpoints) section for details).
+
+#### 7.2 WorkTimePublicResource (Device Endpoints)
+
+**File:** [plugins/worktime/core/src/main/java/com/hmdm/plugins/worktime/rest/resource/WorkTimePublicResource.java](plugins/worktime/core/src/main/java/com/hmdm/plugins/worktime/rest/resource/WorkTimePublicResource.java)
+
+Public endpoints for device queries (authentication optional):
+
+**Key Endpoints:**
+- `GET /plugins/worktime/public/policy/effective/{userId}` - Get resolved policy
+- `GET /plugins/worktime/public/allowed?userId={id}&pkg={package}` - Check app permission
+
+---
+
+### 8. Guice Modules
+
+#### 8.1 WorkTimeRestModule
 
 **File:** [plugins/worktime/core/src/main/java/com/hmdm/plugins/worktime/guice/module/WorkTimeRestModule.java](plugins/worktime/core/src/main/java/com/hmdm/plugins/worktime/guice/module/WorkTimeRestModule.java)
 
@@ -401,7 +557,7 @@ Configures REST API security filters:
 public class WorkTimeRestModule extends ServletModule {
     // Protected resources requiring authentication
     private static final List<String> protectedResources = 
-        Arrays.asList("/rest/plugins/worktime/*");
+        Arrays.asList("/rest/plugins/worktime/private/*");
     
     // Applied filters:
     // - JWTFilter (JWT token validation)
@@ -411,7 +567,7 @@ public class WorkTimeRestModule extends ServletModule {
 }
 ```
 
-#### 5.2 WorkTimeLiquibaseModule
+#### 8.2 WorkTimeLiquibaseModule
 
 **File:** [plugins/worktime/core/src/main/java/com/hmdm/plugins/worktime/guice/module/WorkTimeLiquibaseModule.java](plugins/worktime/core/src/main/java/com/hmdm/plugins/worktime/guice/module/WorkTimeLiquibaseModule.java)
 
@@ -426,15 +582,14 @@ public class WorkTimeLiquibaseModule extends AbstractLiquibaseModule {
 }
 ```
 
-#### 5.3 Postgres-Specific Modules
+#### 8.3 Postgres-Specific Modules
 
-Three modules in postgres package:
+Two modules in postgres package:
 
 | Module | File | Purpose |
 |--------|------|---------|
 | **WorkTimePostgresLiquibaseModule** | `postgres/.../guice/module/WorkTimePostgresLiquibaseModule.java` | Loads postgres-specific Liquibase changelog |
-| **WorkTimePostgresPersistenceModule** | `postgres/.../guice/module/WorkTimePostgresPersistenceModule.java` | Configures MyBatis mappers |
-| **WorkTimePostgresServiceModule** | `postgres/.../guice/module/WorkTimePostgresServiceModule.java` | Binds DAO implementations to interfaces |
+| **WorkTimePostgresPersistenceModule** | `postgres/.../guice/module/WorkTimePostgresPersistenceModule.java` | Configures MyBatis mappers & binds DAO implementations |
 
 ---
 
@@ -473,17 +628,36 @@ Temporary organizational overrides:
 
 #### 3. worktime_user_override
 
-Per-user exceptions to policies:
+Per-user exceptions and custom policy settings:
 
 | Column | Type | Nullable | Default | Purpose |
 |--------|------|----------|---------|---------|
 | `id` | SERIAL | NO | (PK) | Override identifier |
-| `user_id` | INT | YES | | User ID (if applicable) |
-| `device_id` | INT | YES | | Device ID (if applicable) |
-| `start_datetime` | TIMESTAMP | YES | | Override start date/time |
-| `end_datetime` | TIMESTAMP | YES | | Override end date/time |
-| `enabled` | BOOLEAN | NO | true | Enable/disable override |
-| `customer_id` | INT | NO | | Organization ID |
+| `user_id` | INT | NO | | User ID (FK to users table) |
+| `start_time` | VARCHAR(5) | YES | | Custom start time (HH:mm) overriding global |
+| `end_time` | VARCHAR(5) | YES | | Custom end time (HH:mm) overriding global |
+| `days_of_week` | VARCHAR(50) | YES | | Custom days bitmask or CSV overriding global |
+| `allowed_apps_during_work` | TEXT | YES | | Custom apps allowed during work |
+| `allowed_apps_outside_work` | TEXT | YES | | Custom apps allowed outside work |
+| `start_datetime` | TIMESTAMP | YES | | Temporary exception start (policy disabled from this time) |
+| `end_datetime` | TIMESTAMP | YES | | Temporary exception end (policy re-enabled after this time) |
+| `enabled` | BOOLEAN | NO | true | Enable/disable override (false = temporary exception active) |
+| `customer_id` | INT | NO | | Organization ID (FK to customers table) |
+| `priority` | INT | YES | 0 | Override priority (higher = more precedence) |
+| `created_at` | TIMESTAMP | YES | CURRENT_TIMESTAMP | Creation timestamp |
+| `updated_at` | TIMESTAMP | YES | CURRENT_TIMESTAMP | Last update timestamp |
+
+**Constraints:**
+- PRIMARY KEY: `id`
+- UNIQUE: `(customer_id, user_id)` - One override per user per customer
+- INDEX: `idx_worktime_user_customer` on `customer_id`
+- INDEX: `idx_worktime_user_userid` on `user_id`
+
+**Usage Notes:**
+- When `enabled = false` and `start_datetime`/`end_datetime` are set: temporary exception (policy disabled during that window)
+- When `enabled = true`: permanent override with custom policy settings
+- When override expires (`end_datetime` < now), cleanup task deletes the record
+- Custom fields (`start_time`, `end_time`, etc.) override global policy when set; null values fall back to global
 
 ### Liquibase Changelogs
 
@@ -504,12 +678,19 @@ http://<host>:<port>/rest/plugins/worktime/
 
 ### Authentication
 
-All endpoints require:
+**Private Endpoints** (`/rest/plugins/worktime/private/*`):
 - **JWT Token**: Valid JWT authentication token
 - **Admin Access**: Must have admin privileges for the customer
 - **IP Whitelist**: Internal IP addresses only
 
-### Endpoints
+**Public Endpoints** (`/rest/plugins/worktime/public/*`):
+- **Authentication**: Optional (if authenticated, uses current user's customerId)
+- **Device Access**: Intended for device/launcher queries
+- **customerId**: Required query parameter if not authenticated
+
+---
+
+### Admin Endpoints (Private)
 
 #### 1. GET /rest/plugins/worktime/private/policy
 
@@ -547,47 +728,12 @@ Authorization: Bearer <jwt_token>
 - `404 Not Found` - No policy configured for customer
 
 ---
- 
-#### User override endpoints (admin only)
 
-These endpoints allow administrators to manage per-user worktime overrides. All endpoints under `/rest/plugins/worktime/private/*` require the caller to have the `worktime` permission (in addition to JWT auth and IP filters configured for private paths).
-
-- GET `/rest/plugins/worktime/private/users`
-  - Description: List all user overrides for current customer
-  - Response: JSON array of `WorkTimeUserOverride` objects
-
-- GET `/rest/plugins/worktime/private/users/{userId}`
-  - Description: Get override for a specific user
-
-- POST `/rest/plugins/worktime/private/users/{userId}`
-  - Description: Create or update override for a user
-  - Body: `WorkTimeUserOverride` JSON
-
-- DELETE `/rest/plugins/worktime/private/users/{userId}`
-  - Description: Remove override for a user
-
-All user override endpoints are admin-only and enforce the `worktime` permission on the server side.
-
----
-
-#### Public endpoints (for devices / launcher)
-
-These endpoints are available under `/rest/plugins/worktime/public/*` and are intentionally left outside the admin filters so that devices (or the launcher) can query the effective policy or check whether a specific app is allowed for a user.
-
-- GET `/rest/plugins/worktime/public/policy/effective/{userId}`
-  - Description: Returns the resolved effective policy for specified `userId` (considers global policy and per-user override)
-  - Query params: optional `customerId` (when caller is not authenticated)
-
-- GET `/rest/plugins/worktime/public/allowed?userId={uid}&pkg={package.name}&customerId={cid}`
-  - Description: Returns boolean `true`/`false` indicating whether the specified app `pkg` is allowed for the `userId` at current server time.
-  - Notes: `customerId` optional when request is authenticated; otherwise required.
-
-Security note: Public endpoints are purposely not protected by admin-only filters; if you need to restrict access to devices only, add appropriate authentication (shared secret, device token) or restrict by IP in `WorkTimeRestModule`.
 #### 2. POST /rest/plugins/worktime/private/policy
 
 **Description:** Create or update the global work time policy
 
-**Authentication:** Required (JWT + Auth Filter)
+**Authentication:** Required (JWT + Auth + Admin)
 
 **Content-Type:** `application/json`
 
@@ -634,6 +780,217 @@ Content-Type: application/json
 
 ---
 
+#### 3. GET /rest/plugins/worktime/private/users
+
+**Description:** List all user overrides for the current customer (includes all users with their override status)
+
+**Authentication:** Required (JWT + Auth + Admin)
+
+**Request:**
+```
+GET /rest/plugins/worktime/private/users
+Authorization: Bearer <jwt_token>
+```
+
+**Response:**
+```json
+{
+  "status": "OK",
+  "data": [
+    {
+      "id": 1,
+      "customerId": 123,
+      "userId": 456,
+      "userName": "john.doe",
+      "enabled": true,
+      "startTime": "10:00",
+      "endTime": "16:00",
+      "daysOfWeek": "1,2,3,4,5",
+      "allowedAppsDuringWork": "com.work.app1,com.work.app2",
+      "allowedAppsOutsideWork": "*",
+      "exceptions": [
+        {
+          "dateFrom": "2026-02-10",
+          "dateTo": "2026-02-15",
+          "timeFrom": "09:00",
+          "timeTo": "18:00",
+          "active": true
+        }
+      ],
+      "priority": 10,
+      "createdAt": "2026-02-01T10:00:00Z",
+      "updatedAt": "2026-02-08T15:30:00Z"
+    }
+  ]
+}
+```
+
+**Status Codes:**
+- `200 OK` - Users retrieved successfully
+- `401 Unauthorized` - Invalid or missing JWT token
+- `403 Forbidden` - User lacks admin permissions
+
+---
+
+#### 4. GET /rest/plugins/worktime/private/users/{userId}
+
+**Description:** Get override for a specific user
+
+**Authentication:** Required (JWT + Auth + Admin)
+
+**Request:**
+```
+GET /rest/plugins/worktime/private/users/456
+Authorization: Bearer <jwt_token>
+```
+
+**Response:**
+```json
+{
+  "status": "OK",
+  "data": {
+    "id": 1,
+    "customerId": 123,
+    "userId": 456,
+    "userName": "john.doe",
+    "enabled": true,
+    "startTime": "10:00",
+    "endTime": "16:00",
+    "exceptions": []
+  }
+}
+```
+
+---
+
+#### 5. POST /rest/plugins/worktime/private/users/{userId}
+
+**Description:** Create or update override for a user
+
+**Authentication:** Required (JWT + Auth + Admin)
+
+**Content-Type:** `application/json`
+
+**Request:**
+```json
+POST /rest/plugins/worktime/private/users/456
+Authorization: Bearer <jwt_token>
+Content-Type: application/json
+
+{
+  "userId": 456,
+  "enabled": true,
+  "startTime": "10:00",
+  "endTime": "16:00",
+  "daysOfWeek": "1,2,3,4,5",
+  "allowedAppsDuringWork": "com.work.app",
+  "allowedAppsOutsideWork": "*",
+  "priority": 10
+}
+```
+
+**Response:**
+```json
+{
+  "status": "OK",
+  "data": {
+    "id": 1,
+    "customerId": 123,
+    "userId": 456,
+    "enabled": true,
+    "startTime": "10:00",
+    "endTime": "16:00"
+  }
+}
+```
+
+---
+
+#### 6. DELETE /rest/plugins/worktime/private/users/{userId}
+
+**Description:** Remove override for a user
+
+**Authentication:** Required (JWT + Auth + Admin)
+
+**Request:**
+```
+DELETE /rest/plugins/worktime/private/users/456
+Authorization: Bearer <jwt_token>
+```
+
+**Response:**
+```json
+{
+  "status": "OK"
+}
+```
+
+---
+
+### Public Endpoints (Device Access)
+
+#### 7. GET /rest/plugins/worktime/public/policy/effective/{userId}
+
+**Description:** Get the resolved effective policy for a user (merges global policy with user overrides)
+
+**Authentication:** Optional (uses authenticated user's customerId or requires customerId parameter)
+
+**Request:**
+```
+GET /rest/plugins/worktime/public/policy/effective/456?customerId=123
+```
+
+**Response:**
+```json
+{
+  "status": "OK",
+  "data": {
+    "enabled": true,
+    "startTime": "10:00",
+    "endTime": "16:00",
+    "daysOfWeek": 31,
+    "allowedAppsDuringWork": ["com.work.app1", "com.work.app2"],
+    "allowedAppsOutsideWork": ["*"]
+  }
+}
+```
+
+**Status Codes:**
+- `200 OK` - Policy retrieved successfully
+- `400 Bad Request` - Missing required customerId parameter
+
+---
+
+#### 8. GET /rest/plugins/worktime/public/allowed
+
+**Description:** Check if a specific app is allowed for a user at the current server time
+
+**Authentication:** Optional
+
+**Query Parameters:**
+- `userId` (required) - User ID to check
+- `pkg` (required) - App package name (e.g., `com.example.app`)
+- `customerId` (optional) - Customer ID (required if not authenticated)
+
+**Request:**
+```
+GET /rest/plugins/worktime/public/allowed?userId=456&pkg=com.example.app&customerId=123
+```
+
+**Response:**
+```json
+{
+  "status": "OK",
+  "data": true
+}
+```
+
+**Status Codes:**
+- `200 OK` - Check completed (data is boolean)
+- `400 Bad Request` - Missing required parameters
+
+---
+
 ### Days of Week Bitmask Reference
 
 The `daysOfWeek` field uses a 7-bit bitmask:
@@ -653,6 +1010,389 @@ The `daysOfWeek` field uses a 7-bit bitmask:
 - Monday-Friday (Revised): `2+4+8+16+32 = 62` or `0x3E`
 - All days: `127` or `0x7F`
 - Weekday + Saturday: `1+2+4+8+16+32 = 63` or `0x3F`
+
+---
+
+## Android Client Integration
+
+### Overview
+
+The WorkTime plugin provides multiple integration methods for Android MDM clients to enforce worktime policies:
+
+1. **Automatic Delivery via Sync** - Policies automatically included in device configuration sync (recommended)
+2. **Device-Specific REST APIs** - Direct API calls using device number
+3. **User-Based REST APIs** - For admin panels or when user context is available
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│           Android MDM Client (Device)                │
+├─────────────────────────────────────────────────────┤
+│                                                       │
+│  1. Device syncs configuration with server           │
+│     GET /public/sync/configuration/{deviceNumber}    │
+│                                                       │
+│  2. Server automatically injects worktime policy     │
+│     via WorkTimeSyncResponseHook                     │
+│                                                       │
+│  3. Policy delivered in sync response (custom1)      │
+│     { "custom1": "{\"pluginId\":\"worktime\"...}" }  │
+│                                                       │
+│  4. Android parses policy and enforces locally       │
+│     - Checks current time against policy             │
+│     - Blocks/allows apps based on time               │
+│                                                       │
+│  5. Optionally: Real-time checks via REST API        │
+│     GET /plugins/worktime/public/device/{number}/... │
+│                                                       │
+└─────────────────────────────────────────────────────┘
+```
+
+---
+
+### Method 1: Automatic Sync Integration (Recommended)
+
+**How It Works:**
+
+When an Android device calls the standard sync endpoint to get its configuration:
+
+```
+GET /public/sync/configuration/{deviceNumber}
+```
+
+The `WorkTimeSyncResponseHook` automatically:
+1. Resolves the device's customer ID
+2. Fetches the effective worktime policy for that device
+3. Serializes the policy to JSON
+4. Injects it into the `custom1` field of the sync response
+
+**Android Implementation:**
+
+```java
+// 1. Perform standard device sync
+Response<SyncResponse> syncResponse = syncApi.getConfiguration(deviceNumber);
+
+// 2. Extract worktime policy from custom1 field
+String worktimePolicyJson = syncResponse.body().getCustom1();
+
+// 3. Parse the policy wrapper
+WorkTimePolicyWrapper wrapper = gson.fromJson(worktimePolicyJson, WorkTimePolicyWrapper.class);
+
+// 4. Check if worktime plugin is present
+if ("worktime".equals(wrapper.getPluginId())) {
+    EffectiveWorkTimePolicy policy = wrapper.getPolicy();
+    
+    // 5. Store policy locally for enforcement
+    worktimeManager.updatePolicy(policy);
+    
+    // 6. Apply enforcement rules
+    if (policy.isEnabled()) {
+        enforceWorktimeRestrictions(policy);
+    }
+}
+```
+
+**Policy Wrapper Structure:**
+
+```json
+{
+  "pluginId": "worktime",
+  "timestamp": 1707523200000,
+  "policy": {
+    "enabled": true,
+    "startTime": "09:00",
+    "endTime": "18:00",
+    "daysOfWeek": 31,
+    "allowedAppsDuringWork": ["com.work.app1", "com.work.app2"],
+    "allowedAppsOutsideWork": ["*"]
+  }
+}
+```
+
+**Benefits:**
+- ✅ No additional API calls required
+- ✅ Policy updates delivered automatically during sync
+- ✅ Works with existing sync infrastructure
+- ✅ Minimal network overhead
+
+---
+
+### Method 2: Device-Specific REST APIs
+
+For real-time policy checks or when sync is not available, use device-specific endpoints:
+
+#### 9. GET /rest/plugins/worktime/public/device/{deviceNumber}/policy
+
+**Description:** Get the effective worktime policy for a specific device
+
+**Authentication:** None required (device number identifies the device)
+
+**Request:**
+```
+GET /rest/plugins/worktime/public/device/DEVICE-001/policy
+```
+
+**Response:**
+```json
+{
+  "status": "OK",
+  "data": {
+    "enabled": true,
+    "startTime": "09:00",
+    "endTime": "18:00",
+    "daysOfWeek": 31,
+    "allowedAppsDuringWork": ["com.work.app1", "com.work.app2"],
+    "allowedAppsOutsideWork": ["*"]
+  }
+}
+```
+
+**Android Implementation:**
+```java
+public EffectiveWorkTimePolicy fetchPolicy(String deviceNumber) {
+    Call<Response<EffectiveWorkTimePolicy>> call = 
+        worktimeApi.getDevicePolicy(deviceNumber);
+    
+    Response<Response<EffectiveWorkTimePolicy>> response = call.execute();
+    if (response.isSuccessful() && "OK".equals(response.body().getStatus())) {
+        return response.body().getData();
+    }
+    return null;
+}
+```
+
+---
+
+#### 10. GET /rest/plugins/worktime/public/device/{deviceNumber}/allowed
+
+**Description:** Check if a specific app is allowed for the device at current time
+
+**Request:**
+```
+GET /rest/plugins/worktime/public/device/DEVICE-001/allowed?pkg=com.example.app
+```
+
+**Response:**
+```json
+{
+  "status": "OK",
+  "data": true
+}
+```
+
+**Android Implementation:**
+```java
+public boolean isAppAllowed(String deviceNumber, String packageName) {
+    Call<Response<Boolean>> call = 
+        worktimeApi.isAppAllowedForDevice(deviceNumber, packageName);
+    
+    Response<Response<Boolean>> response = call.execute();
+    if (response.isSuccessful() && "OK".equals(response.body().getStatus())) {
+        return response.body().getData();
+    }
+    return true; // Default: allow if check fails
+}
+```
+
+---
+
+#### 11. GET /rest/plugins/worktime/public/device/{deviceNumber}/status
+
+**Description:** Get quick status check (enabled + currently in work time)
+
+**Request:**
+```
+GET /rest/plugins/worktime/public/device/DEVICE-001/status
+```
+
+**Response:**
+```json
+{
+  "status": "OK",
+  "data": {
+    "enabled": true,
+    "currentlyInWorkTime": true,
+    "startTime": "09:00",
+    "endTime": "18:00",
+    "daysOfWeek": 31
+  }
+}
+```
+
+**Use Case:** Lightweight status check without fetching full policy
+
+---
+
+### Android Enforcement Logic
+
+**Sample Implementation:**
+
+```java
+public class WorkTimeEnforcer {
+    private EffectiveWorkTimePolicy policy;
+    private Handler handler = new Handler();
+    
+    public void updatePolicy(EffectiveWorkTimePolicy newPolicy) {
+        this.policy = newPolicy;
+        scheduleNextCheck();
+    }
+    
+    public boolean isAppAllowedNow(String packageName) {
+        if (policy == null || !policy.isEnabled()) {
+            return true; // No policy or disabled: allow all
+        }
+        
+        boolean isWorkTime = isCurrentlyWorkTime();
+        Set<String> allowedApps = isWorkTime ? 
+            policy.getAllowedAppsDuringWork() : 
+            policy.getAllowedAppsOutsideWork();
+        
+        // Check if wildcard or explicit permission
+        return allowedApps.contains("*") || allowedApps.contains(packageName);
+    }
+    
+    private boolean isCurrentlyWorkTime() {
+        LocalDateTime now = LocalDateTime.now();
+        DayOfWeek today = now.getDayOfWeek();
+        LocalTime currentTime = now.toLocalTime();
+        
+        // Check if today is a workday
+        int dayBit = 1 << (today.getValue() - 1);
+        if ((policy.getDaysOfWeek() & dayBit) == 0) {
+            return false; // Not a workday
+        }
+        
+        // Parse work hours
+        LocalTime start = LocalTime.parse(policy.getStartTime());
+        LocalTime end = LocalTime.parse(policy.getEndTime());
+        
+        // Check if current time is within work hours
+        return !currentTime.isBefore(start) && !currentTime.isAfter(end);
+    }
+    
+    private void scheduleNextCheck() {
+        // Re-check policy at start/end of work hours
+        // (Implementation depends on app architecture)
+    }
+}
+```
+
+---
+
+### Retrofit API Interface
+
+```java
+public interface WorkTimeApi {
+    // Device-based endpoints
+    @GET("/rest/plugins/worktime/public/device/{deviceNumber}/policy")
+    Call<Response<EffectiveWorkTimePolicy>> getDevicePolicy(
+        @Path("deviceNumber") String deviceNumber
+    );
+    
+    @GET("/rest/plugins/worktime/public/device/{deviceNumber}/allowed")
+    Call<Response<Boolean>> isAppAllowedForDevice(
+        @Path("deviceNumber") String deviceNumber,
+        @Query("pkg") String packageName
+    );
+    
+    @GET("/rest/plugins/worktime/public/device/{deviceNumber}/status")
+    Call<Response<WorkTimeStatus>> getDeviceStatus(
+        @Path("deviceNumber") String deviceNumber
+    );
+}
+```
+
+---
+
+### Caching Strategy
+
+**Recommended approach:**
+
+1. **Sync-based updates** (primary):
+   - Cache policy from sync response
+   - Automatic updates every sync interval (configurable, typically 15-60 min)
+
+2. **Real-time API fallback** (optional):
+   - Use API endpoints if policy not in cache
+   - For immediate updates after policy changes
+
+3. **Local enforcement** (always):
+   - Don't make API call for every app launch
+   - Use cached policy for local time-based decisions
+   - Only query API for edge cases or verification
+
+---
+
+### Testing Android Integration
+
+#### Manual Testing Steps:
+
+1. **Setup**:
+   - Configure worktime policy on MDM server
+   - Enroll test device with known device number
+
+2. **Test Sync Integration**:
+   ```bash
+   # Trigger device sync
+   curl -X GET "http://your-server/public/sync/configuration/DEVICE-001"
+   # Verify custom1 field contains worktime policy
+   ```
+
+3. **Test Device APIs**:
+   ```bash
+   # Get policy
+   curl "http://your-server/rest/plugins/worktime/public/device/DEVICE-001/policy"
+   
+   # Check app permission
+   curl "http://your-server/rest/plugins/worktime/public/device/DEVICE-001/allowed?pkg=com.example.app"
+   
+   # Get status
+   curl "http://your-server/rest/plugins/worktime/public/device/DEVICE-001/status"
+   ```
+
+4. **Test Time-Based Enforcement**:
+   - Set policy with specific work hours (e.g., 9 AM - 5 PM)
+   - Test app access before, during, and after work hours
+   - Verify correct appsare allowed/blocked
+
+5. **Test Per-Device Overrides**:
+   - Create user override for specific device (using deviceId as userId)
+   - Verify override takes precedence over global policy
+
+---
+
+### Error Handling
+
+**Android should handle these scenarios:**
+
+| Scenario | Recommended Behavior |
+|----------|---------------------|
+| Policy not available in sync response | Default to "allow all" or use cached policy |
+| Device not found (404) | Re-enroll or contact admin |
+| Network error during API call | Use cached policy, retry later |
+| Malformed policy JSON | Log error, default to "allow all" |
+| Policy disabled (`enabled: false`) | Allow all apps |
+| No policy configured on server | Allow all apps (default permissive) |
+
+---
+
+### Security Considerations
+
+1. **Device Authentication:**
+   - Device-specific endpoints use deviceNumber for identification
+   - Consider adding device signature validation ifneeded
+   - Current implementation: deviceNumber is trusted (device enrolled in MDM)
+
+2. **Local Enforcement:**
+   - Policy enforcement must happen on device
+   - Server provides policy, device enforces it
+   - Malicious users with root can bypass (inherent limitation)
+
+3. **Policy Integrity:**
+   - Policies delivered via HTTPS
+   - Consider adding checksum/signature in production
+   - Current implementation: trusts HTTPS transport security
 
 ---
 
@@ -962,9 +1702,13 @@ INFO  Path: /rest/plugins/worktime/private
 | **Postgres Module** | `plugins/worktime/postgres/` |
 | **Frontend** | `plugins/worktime/src/main/webapp/` |
 | **Entry Point** | `core/src/main/java/.../WorkTimePluginConfigurationImpl.java` |
+| **Models** | `core/src/main/java/.../model/` (WorkTimePolicy, GlobalWorkTimePolicy, WorkTimeUserOverride, WorkTimePolicyDeviceGroup) |
+| **Service Layer** | `core/src/main/java/.../service/` (WorkTimeService, EffectiveWorkTimePolicy) |
+| **Sync Hook** | `core/src/main/java/.../sync/WorkTimeSyncResponseHook.java` |
+| **Background Task** | `core/src/main/java/.../task/ExpiredExceptionCleanupTask.java` |
 | **DAO Interface** | `core/src/main/java/.../persistence/WorkTimeDAO.java` |
 | **DAO Implementation** | `postgres/src/main/java/.../dao/PostgresWorkTimeDAO.java` |
-| **REST Resource** | `core/src/main/java/.../rest/resource/WorkTimeResource.java` |
+| **REST Resources** | `core/src/main/java/.../rest/resource/` (WorkTimeResource, WorkTimePublicResource) |
 | **Core Changelog** | `core/src/main/resources/liquibase/worktime.changelog.xml` |
 | **Postgres Changelog** | `postgres/src/main/resources/liquibase/worktime.postgres.changelog.xml` |
 | **Models** | `core/src/main/java/.../model/` |

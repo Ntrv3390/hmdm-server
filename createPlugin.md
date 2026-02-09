@@ -1202,7 +1202,123 @@ angular
 
 ---
 
-## 9. Build & Test
+## 9. Advanced Plugin Patterns (Optional)
+
+### 9.1 Service Layer (Business Logic)
+
+For complex plugins requiring business logic beyond simple CRUD operations, create a service layer between REST resources and DAOs:
+
+**File:** `core/src/main/java/com/hmdm/plugins/myplugin/service/MyPluginService.java`
+
+```java
+package com.hmdm.plugins.myplugin.service;
+
+import com.hmdm.plugins.myplugin.model.MyPluginData;
+import com.hmdm.plugins.myplugin.persistence.MyPluginDAO;
+import javax.inject.Inject;
+import javax.inject.Singleton;
+
+@Singleton
+public class MyPluginService {
+    private final MyPluginDAO dao;
+
+    @Inject
+    public MyPluginService(MyPluginDAO dao) {
+        this.dao = dao;
+    }
+
+    public MyPluginData processData(int customerId, int userId) {
+        // Complex business logic here
+        MyPluginData global = dao.getGlobalData(customerId);
+        MyPluginData user = dao.getUserData(userId);
+        return mergeData(global, user);
+    }
+}
+```
+
+**Usage:** Inject service into REST resources instead of DAO directly.
+
+---
+
+### 9.2 Device Sync Hooks
+
+Integrate with device sync to automatically deliver plugin data to devices:
+
+**File:** `core/src/main/java/com/hmdm/plugins/myplugin/sync/MyPluginSyncResponseHook.java`
+
+```java
+package com.hmdm.plugins.myplugin.sync;
+
+import com.hmdm.rest.json.SyncResponseInt;
+import com.hmdm.rest.json.SyncResponseHook;
+import javax.inject.Singleton;
+
+@Singleton
+public class MyPluginSyncResponseHook implements SyncResponseHook {
+    @Override
+    public SyncResponseInt handle(int deviceId, SyncResponseInt original) {
+        // Add plugin data to sync response
+        original.addCustomData("myplugin", pluginData);
+        return original;
+    }
+}
+```
+
+---
+
+### 9.3 Background Tasks
+
+Create periodic cleanup or maintenance tasks:
+
+**File:** `core/src/main/java/com/hmdm/plugins/myplugin/task/MyPluginCleanupTask.java`
+
+```java
+package com.hmdm.plugins.myplugin.task;
+
+import javax.inject.Inject;
+import javax.inject.Singleton;
+
+@Singleton
+public class MyPluginCleanupTask {
+    public void cleanupExpiredData() {
+        // Periodic cleanup logic
+    }
+}
+```
+
+---
+
+### 9.4 Public REST Endpoints (Device Access)
+
+Create public endpoints accessible without admin authentication:
+
+**File:** `core/src/main/java/com/hmdm/plugins/myplugin/rest/resource/MyPluginPublicResource.java`
+
+```java
+@Path("/plugins/myplugin/public")
+@Produces(MediaType.APPLICATION_JSON)
+public class MyPluginPublicResource {
+    @GET
+    @Path("/data/{id}")
+    public Response getData(@PathParam("id") int id,
+                           @QueryParam("customerId") Integer customerId) {
+        // Public endpoint logic
+        return Response.OK(data);
+    }
+}
+```
+
+**Update RestModule:** Exclude public paths from auth filters:
+
+```java
+private static final List<String> protectedResources = 
+    Arrays.asList("/rest/plugins/myplugin/private/*");
+// Public paths (/public/*) are not in protectedResources
+```
+
+---
+
+## 10. Build & Test
 
 ```bash
 # From project root
@@ -1213,7 +1329,7 @@ cd server
 mvn tomcat7:run
 ```
 
-## 10. Model Classes (Domain Objects)
+## 11. Model Classes (Domain Objects)
 
 ### 10.1 Core Settings Model
 
@@ -1299,9 +1415,9 @@ public class PostgresMyPluginSettings extends MyPluginSettings {
 
 ---
 
-## 11. Complete DAO Implementation
+## 12. Complete DAO Implementation
 
-### 11.1 Postgres DAO Implementation
+### 12.1 Postgres DAO Implementation
 
 **File:** `postgres/src/main/java/com/hmdm/plugins/myplugin/persistence/postgres/dao/PostgresMyPluginDAO.java`
 
@@ -1359,7 +1475,7 @@ public class PostgresMyPluginDAO extends AbstractDAO<PostgresMyPluginSettings>
 
 ---
 
-## 12. HTML View Templates
+## 13. HTML View Templates
 
 ### 12.1 Main View
 
@@ -1470,7 +1586,7 @@ public class PostgresMyPluginDAO extends AbstractDAO<PostgresMyPluginSettings>
 
 ---
 
-## 13. Frontend Deployment (How Files Are Served)
+## 14. Frontend Deployment (How Files Are Served)
 
 ### How Frontend Files Get to the Browser
 
@@ -1504,7 +1620,7 @@ INSERT INTO plugins (
 
 ---
 
-## 14. Common Errors & Troubleshooting
+## 15. Common Errors & Troubleshooting
 
 ### Build Errors
 
@@ -1563,7 +1679,7 @@ INSERT INTO plugins (
 
 ---
 
-## 15. Reference Plugins
+## 16. Reference Plugins
 
 | Plugin       | Description       | Use as Reference For                            |
 | ------------ | ----------------- | ----------------------------------------------- |
@@ -1576,7 +1692,7 @@ INSERT INTO plugins (
 
 ---
 
-## 16. Quick Start Checklist (Copy & Rename)
+## 17. Quick Start Checklist (Copy & Rename)
 
 For fastest development, copy an existing plugin and rename:
 

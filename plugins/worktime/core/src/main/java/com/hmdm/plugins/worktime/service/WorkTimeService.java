@@ -188,4 +188,54 @@ public class WorkTimeService {
             return p.getAllowedOutside().contains(pkg);
         }
     }
+
+    /**
+     * Determines if the given time falls within work hours according to the policy.
+     *
+     * @param startTime start time in HH:mm format
+     * @param endTime end time in HH:mm format
+     * @param daysOfWeek bitmask for days of week
+     * @param now current date/time
+     * @return true if current time is within work hours, false otherwise
+     */
+    public boolean isWorkTime(String startTime, String endTime, int daysOfWeek, LocalDateTime now) {
+        LocalTime time = now.toLocalTime();
+        LocalTime start = LocalTime.parse(startTime, TIME);
+        LocalTime end = LocalTime.parse(endTime, TIME);
+
+        boolean withinWork;
+        if (!start.equals(end)) {
+            if (start.isBefore(end) || start.equals(end)) {
+                withinWork = !time.isBefore(start) && !time.isAfter(end);
+            } else {
+                // overnight: start > end
+                withinWork = !time.isBefore(start) || !time.isAfter(end);
+            }
+        } else {
+            // equal times -> treat as full day
+            withinWork = true;
+        }
+
+        // Check day of week
+        if (withinWork) {
+            DayOfWeek checkDay;
+            if (start.isBefore(end) || start.equals(end)) {
+                checkDay = now.getDayOfWeek();
+            } else {
+                // overnight window
+                if (!time.isBefore(start)) {
+                    checkDay = now.getDayOfWeek();
+                } else {
+                    checkDay = now.minusDays(1).getDayOfWeek();
+                }
+            }
+
+            int dayBit = 1 << (checkDay.getValue() - 1);
+            if ((daysOfWeek & dayBit) == 0) {
+                withinWork = false;
+            }
+        }
+
+        return withinWork;
+    }
 }
