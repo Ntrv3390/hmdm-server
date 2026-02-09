@@ -102,6 +102,7 @@ document.localization["ru_RU"] = {
   "button.wifi.on": "Включить Wi-Fi",
   "button.notify.update": "Уведомить об обновлении",
   "button.app.settings": "Настройки приложений",
+  "button.view.calllogs": "Просмотр журналов звонков",
   "button.ok": "OK",
   "button.help": "Помощь",
   "button.new.app": "Новое приложение",

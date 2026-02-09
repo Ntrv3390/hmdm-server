@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.0.xsd">
+
+    <!-- ========================================================= -->
+    <!-- Create call log data table                               -->
+    <!-- ========================================================= -->
+    <changeSet id="calllog-create-data-table" author="calllog-plugin">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="plugin_calllog_data"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="plugin_calllog_data">
+            <column name="id" type="SERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <column name="deviceId" type="INT">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="phoneNumber" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+
+            <column name="contactName" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+
+            <column name="callType" type="INT">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="duration" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="callTimestamp" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="callDate" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+
+            <column name="createTime" type="BIGINT">
+                <constraints nullable="true"/>
+            </column>
+
+            <column name="customerId" type="INT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Create indexes for performance -->
+        <createIndex indexName="idx_calllog_device" tableName="plugin_calllog_data">
+            <column name="deviceId"/>
+            <column name="customerId"/>
+        </createIndex>
+
+        <createIndex indexName="idx_calllog_timestamp" tableName="plugin_calllog_data">
+            <column name="callTimestamp"/>
+        </createIndex>
+
+        <createIndex indexName="idx_calllog_customer" tableName="plugin_calllog_data">
+            <column name="customerId"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- ========================================================= -->
+    <!-- Create settings table                                    -->
+    <!-- ========================================================= -->
+    <changeSet id="calllog-create-settings-table" author="calllog-plugin">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="plugin_calllog_settings"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="plugin_calllog_settings">
+            <column name="id" type="SERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <column name="customerId" type="INT">
+                <constraints nullable="false" unique="true"/>
+            </column>
+
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="retentionDays" type="INT" defaultValueNumeric="90">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- ========================================================= -->
+    <!-- Register plugin in plugins table                         -->
+    <!-- ========================================================= -->
+    <changeSet id="calllog-register-plugin" author="calllog-plugin">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="plugins"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM plugins WHERE identifier = 'calllog'
+            </sqlCheck>
+        </preConditions>
+
+        <insert tableName="plugins">
+            <column name="identifier" value="calllog"/>
+            <column name="name" value="plugin.calllog.localization.plugin.name"/>
+            <column name="description" value=""/>
+            <column name="javascriptModuleFile" value="app/components/plugins/calllog/calllog.module.js"/>
+            <column name="functionsViewTemplate" value=""/>
+            <column name="settingsViewTemplate" value="app/components/plugins/calllog/views/settings.html"/>
+            <column name="namelocalizationkey" value="plugin.calllog.localization.plugin.name"/>
+            <column name="settingsPermission" value="plugin_calllog_access"/>
+            <column name="deviceFunctionsPermission" value=""/>
+            <column name="disabled" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- ========================================================= -->
+    <!-- Create permissions for the plugin                        -->
+    <!-- ========================================================= -->
+    <changeSet id="calllog-create-permission" author="calllog-plugin">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="permissions"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM permissions WHERE name = 'plugin_calllog_access'
+            </sqlCheck>
+        </preConditions>
+
+        <insert tableName="permissions">
+            <column name="name" value="plugin_calllog_access"/>
+            <column name="description" value="Access to Call Log Plugin"/>
+        </insert>
+    </changeSet>
+
+    <!-- ========================================================= -->
+    <!-- Grant permission to super-admin role                     -->
+    <!-- ========================================================= -->
+    <changeSet id="calllog-grant-permission-superadmin" author="calllog-plugin">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="userrolePermissions"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) 
+                FROM userrolePermissions urp
+                JOIN permissions p ON urp.permissionId = p.id
+                JOIN userroles ur ON urp.roleId = ur.id
+                WHERE p.name = 'plugin_calllog_access' AND ur.name = 'Super Admin'
+            </sqlCheck>
+        </preConditions>
+
+        <sql>
+            INSERT INTO userrolePermissions (roleId, permissionId)
+            SELECT ur.id, p.id
+            FROM userroles ur, permissions p
+            WHERE ur.name = 'Super Admin' AND p.name = 'plugin_calllog_access'
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

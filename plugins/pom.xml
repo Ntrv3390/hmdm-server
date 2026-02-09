@@ -46,6 +46,7 @@
         <module>push</module>
         <module>xtra</module>
         <module>worktime</module>
+        <module>calllog</module>
     </modules>
 
     <dependencies>

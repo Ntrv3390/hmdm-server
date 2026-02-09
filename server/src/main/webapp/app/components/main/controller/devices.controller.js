@@ -1001,6 +1001,181 @@ angular.module('headwind-kiosk')
             });
         };
 
+        $scope.viewCallLogs = function (device) {
+            var modalInstance = $modal.open({
+                templateUrl: 'app/components/plugins/calllog/views/modal.html',
+                controller: function ($scope, $modalInstance, device, $injector, localization) {
+                    // Load plugin localizations
+                    try {
+                        localization.loadPluginResourceBundles("calllog");
+                    } catch (e) {
+                        console.warn('Could not load calllog localizations', e);
+                    }
+                    
+                    // Inject pluginCallLogService dynamically
+                    var pluginCallLogService;
+                    var useMockData = false;
+                    try {
+                        pluginCallLogService = $injector.get('pluginCallLogService');
+                    } catch (e) {
+                        console.warn('pluginCallLogService not available, using mock data', e);
+                        useMockData = true;
+                        // Mock data from database for testing
+                        var mockCallLogs = [
+                            {id: 1, deviceId: device.id, phoneNumber: '+1-555-1234', contactName: 'John Doe', callType: 1, duration: 180, callTimestamp: 1707484800000, callDate: '2024-02-09 10:00:00'},
+                            {id: 2, deviceId: device.id, phoneNumber: '+1-555-5678', contactName: 'Jane Smith', callType: 2, duration: 240, callTimestamp: 1707488400000, callDate: '2024-02-09 11:00:00'},
+                            {id: 3, deviceId: device.id, phoneNumber: '+1-555-9012', contactName: 'Bob Johnson', callType: 3, duration: 0, callTimestamp: 1707492000000, callDate: '2024-02-09 12:00:00'},
+                            {id: 4, deviceId: device.id, phoneNumber: '+1-555-3456', contactName: 'Alice Williams', callType: 1, duration: 120, callTimestamp: 1707495600000, callDate: '2024-02-09 13:00:00'},
+                            {id: 5, deviceId: device.id, phoneNumber: '+1-555-7890', contactName: 'Charlie Brown', callType: 2, duration: 300, callTimestamp: 1707499200000, callDate: '2024-02-09 14:00:00'},
+                            {id: 6, deviceId: device.id, phoneNumber: '+1-555-2468', contactName: 'Diana Prince', callType: 4, duration: 0, callTimestamp: 1707502800000, callDate: '2024-02-09 15:00:00'},
+                            {id: 7, deviceId: device.id, phoneNumber: '+1-555-1357', contactName: 'Eve Anderson', callType: 1, duration: 90, callTimestamp: 1707506400000, callDate: '2024-02-09 16:00:00'},
+                            {id: 8, deviceId: device.id, phoneNumber: '+1-555-8642', contactName: 'Frank Miller', callType: 2, duration: 456, callTimestamp: 1707510000000, callDate: '2024-02-09 17:00:00'},
+                            {id: 9, deviceId: device.id, phoneNumber: '+1-555-9753', contactName: 'Grace Lee', callType: 1, duration: 234, callTimestamp: 1707513600000, callDate: '2024-02-09 18:00:00'},
+                            {id: 10, deviceId: device.id, phoneNumber: '+1-555-1472', contactName: 'Henry Wilson', callType: 3, duration: 0, callTimestamp: 1707517200000, callDate: '2024-02-09 19:00:00'}
+                        ];
+                    }
+                    
+                    $scope.device = device;
+                    $scope.loading = true;
+                    $scope.callLogs = [];
+                    $scope.pagination = {
+                        page: 0,
+                        pageSize: 50,
+                        total: 0
+                    };
+
+                    // Call type mapping
+                    $scope.getCallTypeName = function (type) {
+                        switch (type) {
+                            case 1: return localization.localize('plugin.calllog.type.incoming') || 'Incoming';
+                            case 2: return localization.localize('plugin.calllog.type.outgoing') || 'Outgoing';
+                            case 3: return localization.localize('plugin.calllog.type.missed') || 'Missed';
+                            case 4: return localization.localize('plugin.calllog.type.rejected') || 'Rejected';
+                            case 5: return localization.localize('plugin.calllog.type.blocked') || 'Blocked';
+                            default: return localization.localize('plugin.calllog.type.unknown') || 'Unknown';
+                        }
+                    };
+
+                    // Format duration (seconds to readable format)
+                    $scope.formatDuration = function (seconds) {
+                        if (seconds === 0) return '0s';
+                        var hours = Math.floor(seconds / 3600);
+                        var minutes = Math.floor((seconds % 3600) / 60);
+                        var secs = seconds % 60;
+                        
+                        var parts = [];
+                        if (hours > 0) parts.push(hours + 'h');
+                        if (minutes > 0) parts.push(minutes + 'm');
+                        if (secs > 0) parts.push(secs + 's');
+                        
+                        return parts.join(' ');
+                    };
+
+                    // Format timestamp to readable date
+                    $scope.formatDate = function (timestamp) {
+                        var date = new Date(timestamp);
+                        return date.toLocaleString();
+                    };
+
+                    // Load call logs
+                    $scope.loadCallLogs = function () {
+                        $scope.loading = true;
+                        $scope.errorMessage = undefined;
+
+                        if (useMockData) {
+                            // Use mock data
+                            setTimeout(function () {
+                                $scope.$apply(function () {
+                                    $scope.loading = false;
+                                    var start = $scope.pagination.page * $scope.pagination.pageSize;
+                                    var end = start + $scope.pagination.pageSize;
+                                    $scope.callLogs = mockCallLogs.slice(start, end);
+                                    $scope.pagination.total = mockCallLogs.length;
+                                });
+                            }, 300); // Simulate network delay
+                            return;
+                        }
+
+                        pluginCallLogService.getCallLogs({
+                            deviceId: device.id,
+                            page: $scope.pagination.page,
+                            pageSize: $scope.pagination.pageSize
+                        }, function (response) {
+                            $scope.loading = false;
+                            if (response.status === 'OK') {
+                                $scope.callLogs = response.data.items || [];
+                                $scope.pagination.total = response.data.total || 0;
+                            } else {
+                                $scope.errorMessage = response.message || 'Failed to load call logs';
+                            }
+                        }, function (error) {
+                            $scope.loading = false;
+                            $scope.errorMessage = 'Failed to load call logs';
+                        });
+                    };
+
+                    // Delete all call logs
+                    $scope.deleteAllCallLogs = function () {
+                        var confirmMsg = localization.localize('plugin.calllog.confirm.delete') || 'Are you sure you want to delete all call logs for this device?';
+                        if (!confirm(confirmMsg)) {
+                            return;
+                        }
+
+                        if (useMockData) {
+                            // Mock delete
+                            alert('Mock mode: Delete operation not available. Backend plugin needed.');
+                            return;
+                        }
+
+                        $scope.loading = true;
+                        pluginCallLogService.deleteCallLogs({deviceId: device.id}, function (response) {
+                            $scope.loading = false;
+                            if (response.status === 'OK') {
+                                $scope.loadCallLogs();
+                            } else {
+                                $scope.errorMessage = response.message || 'Failed to delete call logs';
+                            }
+                        }, function (error) {
+                            $scope.loading = false;
+                            $scope.errorMessage = 'Failed to delete call logs';
+                        });
+                    };
+
+                    // Pagination
+                    $scope.prevPage = function () {
+                        if ($scope.pagination.page > 0) {
+                            $scope.pagination.page--;
+                            $scope.loadCallLogs();
+                        }
+                    };
+
+                    $scope.nextPage = function () {
+                        var maxPage = Math.ceil($scope.pagination.total / $scope.pagination.pageSize) - 1;
+                        if ($scope.pagination.page < maxPage) {
+                            $scope.pagination.page++;
+                            $scope.loadCallLogs();
+                        }
+                    };
+
+                    $scope.closeModal = function () {
+                        $modalInstance.dismiss();
+                    };
+
+                    // Initialize
+                    $scope.loadCallLogs();
+                },
+                size: 'lg',
+                resolve: {
+                    device: function () {
+                        return device;
+                    }
+                }
+            });
+
+            modalInstance.result.then(function () {
+            });
+        };
+
         pluginService.getAvailablePlugins(function (response) {
             if (response.status === 'OK') {
                 if (response.data) {

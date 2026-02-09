@@ -101,6 +101,7 @@ document.localization["en_US"] = {
   "button.wifi.on": "Enable Wi-Fi",
   "button.notify.update": "Notify on update",
   "button.app.settings": "Application settings",
+  "button.view.calllogs": "View Call Logs",
   "button.ok": "OK",
   "button.help": "Help",
   "button.new.app": "New application",
