@@ -1115,7 +1115,7 @@ angular.module('headwind-kiosk')
                     };
 
                     // Delete all call logs
-                    $scope.deleteAllCallLogs = function () {
+                    $scope.deleteAllLogs = function () {
                         var confirmMsg = localization.localize('plugin.calllog.confirm.delete') || 'Are you sure you want to delete all call logs for this device?';
                         if (!confirm(confirmMsg)) {
                             return;
@@ -1142,7 +1142,11 @@ angular.module('headwind-kiosk')
                     };
 
                     // Pagination
-                    $scope.prevPage = function () {
+                    $scope.getTotalPages = function () {
+                        return Math.ceil($scope.pagination.total / $scope.pagination.pageSize);
+                    };
+
+                    $scope.previousPage = function () {
                         if ($scope.pagination.page > 0) {
                             $scope.pagination.page--;
                             $scope.loadCallLogs();
@@ -1157,7 +1161,7 @@ angular.module('headwind-kiosk')
                         }
                     };
 
-                    $scope.closeModal = function () {
+                    $scope.close = function () {
                         $modalInstance.dismiss();
                     };
 

@@ -7,6 +7,10 @@
   "plugin.calllog.settings.retention.hint": "Количество дней хранения журналов звонков (0 = хранить вечно)",
   "plugin.calllog.modal.title": "Журналы звонков",
   "plugin.calllog.device.info": "Информация об устройстве",
+  "plugin.calllog.device.number": "Номер устройства",
+  "plugin.calllog.device.model": "Модель",
+  "plugin.calllog.device.imei": "IMEI",
+  "plugin.calllog.device.phone": "Номер телефона",
   "plugin.calllog.logs.title": "История звонков",
   "plugin.calllog.no.logs": "Журналы звонков для этого устройства не найдены",
   "plugin.calllog.table.date": "Дата/время",
@@ -21,9 +25,11 @@
   "plugin.calllog.type.blocked": "Заблокированный",
   "plugin.calllog.type.unknown": "Неизвестный",
   "plugin.calllog.confirm.delete": "Вы уверены, что хотите удалить все журналы звонков для этого устройства? Это действие не может быть отменено.",
+  "plugin.calllog.page": "Страница",
   "button.view.calllogs": "Просмотр журналов звонков",
   "button.delete.all": "Удалить все",
   "button.previous": "Предыдущая",
   "button.next": "Следующая",
+  "button.close": "Закрыть",
   "loading.data": "Загрузка данных..."
 }

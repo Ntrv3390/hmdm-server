@@ -151,6 +151,10 @@ angular.module('headwind-kiosk')
             }
         };
 
+        $scope.getTotalPages = function () {
+            return Math.ceil($scope.pagination.total / $scope.pagination.pageSize);
+        };
+
         $scope.deleteAllLogs = function () {
             if (confirm(localization.localize('plugin.calllog.confirm.delete'))) {
                 pluginCallLogService.deleteCallLogs({ deviceId: device.id }, function (response) {
