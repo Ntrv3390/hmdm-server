@@ -101,10 +101,13 @@
 .login-logo {
     margin: 50px auto 0 auto;
     white-space: nowrap;
+    text-align: center;
 }
 
 .login-logo img {
     margin-bottom: 10px;
+    max-width: 150px;
+    height: auto;
 }
 
 .login-logo .logo {

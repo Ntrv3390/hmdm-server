@@ -24,6 +24,8 @@ package com.hmdm.plugins.deviceinfo.rest;
 import com.hmdm.event.DeviceLocationUpdatedEvent;
 import com.hmdm.event.EventService;
 import com.hmdm.persistence.DeviceDAO;
+import com.hmdm.notification.PushService;
+
 import com.hmdm.persistence.UnsecureDAO;
 import com.hmdm.persistence.domain.Device;
 import com.hmdm.plugin.service.PluginStatusCache;
@@ -104,6 +106,8 @@ public class DeviceInfoResource {
      */
     private EventService eventService;
 
+    private PushService pushService;
+
     /**
      * <p>A constructor required by swagger.</p>
      */
@@ -119,13 +123,15 @@ public class DeviceInfoResource {
                               DeviceDAO deviceDAO,
                               DeviceInfoExportService deviceInfoExportService,
                               PluginStatusCache pluginStatusCache,
-                              EventService eventService) {
+                              EventService eventService,
+                              PushService pushService) {
         this.deviceInfoDAO = deviceInfoDAO;
         this.unsecureDAO = unsecureDAO;
         this.deviceDAO = deviceDAO;
         this.deviceInfoExportService = deviceInfoExportService;
         this.pluginStatusCache = pluginStatusCache;
         this.eventService = eventService;
+        this.pushService = pushService;
     }
 
     // =================================================================================================================
@@ -323,4 +329,27 @@ public class DeviceInfoResource {
         }
     }
 
+    // =================================================================================================================
+    @ApiOperation(
+            value = "Refresh device info",
+            notes = "Force device to sync settings and upload latest info",
+            response = Response.class
+    )
+    @POST
+    @Path("/private/refresh/{deviceNumber}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response refreshDevice(@PathParam("deviceNumber") String deviceNumber) {
+        try {
+            Device device = deviceDAO.getDeviceByNumber(deviceNumber);
+            if (device != null) {
+                this.pushService.notifyDeviceOnSettingUpdate(device.getId());
+                return Response.OK();
+            } else {
+                return Response.DEVICE_NOT_FOUND_ERROR();
+            }
+        } catch (Exception e) {
+            logger.error("Unexpected error when refreshing device info", e);
+            return Response.INTERNAL_ERROR();
+        }
+    }
 }

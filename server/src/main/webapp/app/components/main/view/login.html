@@ -1,4 +1,4 @@
-<div class="login-logo" ng-if="rebranding"><img src="rest/public/logo"><span class="logo">{{rebranding.appName}}</span></div>
+<div class="login-logo" ng-if="rebranding"><img src="rest/public/logo"></div>
 
 <!-- Localization completed -->
 <div ng-if="!isIE">
@@ -39,5 +39,5 @@
 </div>
 
 <div class="login-footer" ng-if="rebranding">
-    <span>{{rebranding.appName}}</span> <span localized>app.description</span>. (c) {{rebranding.year}} <a href="{{rebranding.vendorLink}}">{{rebranding.vendorName}}</a>
+    Copyright {{rebranding.vendorName}}
 </div>

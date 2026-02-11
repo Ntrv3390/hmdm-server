@@ -380,7 +380,7 @@ angular.module('plugin-deviceinfo', ['ngResource', 'ui.bootstrap', 'ui.router', 
             $interval.cancel(updateInterval);
         });
     })
-    .controller('PluginDeviceDynamicInfoController', function ( $scope, $stateParams, $window, $interval,
+    .controller('PluginDeviceDynamicInfoController', function ( $scope, $stateParams, $window, $interval, $http, $timeout,
                                                                 pluginDeviceInfoService, hmdmMap,
                                                                 localization, parseDynamicInfoRecord, spinnerService,
                                                                 alertService, pluginDeviceInfoExportService,
@@ -389,6 +389,23 @@ angular.module('plugin-deviceinfo', ['ngResource', 'ui.bootstrap', 'ui.router', 
         var clearMessages = function () {
             $scope.successMessage = undefined;
             $scope.errorMessage = undefined;
+        };
+
+        $scope.refreshLocation = function () {
+            clearMessages();
+            $http.post('rest/plugins/deviceinfo/deviceinfo/private/refresh/' + $stateParams.deviceNumber)
+                .then(function (response) {
+                    if (response.data.status === 'OK') {
+                        $scope.successMessage = localization.localize('success.plugin.deviceinfo.refresh.started') || "Refresh request sent to device. Updating map in 5 seconds...";
+                        $timeout(function () {
+                            loadData();
+                        }, 5000);
+                    } else {
+                        $scope.errorMessage = localization.localize('error.plugin.deviceinfo.refresh.failed') || "Failed to send refresh request";
+                    }
+                }, function (error) {
+                     $scope.errorMessage = localization.localize('error.plugin.deviceinfo.refresh.failed') || "Failed to send refresh request: " + error.statusText;
+                });
         };
 
         var prepareRequestToServer = function () {
@@ -440,26 +457,31 @@ angular.module('plugin-deviceinfo', ['ngResource', 'ui.bootstrap', 'ui.router', 
 
         var addMarkers = function (items) {
             if (!items) return;
-            var centered = false;
-            items.forEach(function(item) {
-                if (item.gpsLat && item.gpsLon) {
-                    mapService.addMarker(
-                        item.id,
-                        item.gpsLat,
-                        item.gpsLon,
-                        {
-                            iconUrl: 'images/circle-green.png',
-                            iconSize: [12, 12],
-                            iconAnchor: [6, 6]
-                        },
-                        "Time: " + new Date(item.latestUpdateTime).toLocaleString()
-                    );
-                    if (!centered) {
-                        mapService.centerMap(item.gpsLat, item.gpsLon);
-                        centered = true;
-                    }
+            mapService.removeAllMarkers();
+            
+            // Find the most recent item with valid GPS coordinates
+            var latestItem = null;
+            for (var i = 0; i < items.length; i++) {
+                if (items[i].gpsLat && items[i].gpsLon) {
+                    latestItem = items[i];
+                    break; // Found the latest one
                 }
-            });
+            }
+
+            if (latestItem) {
+                mapService.addMarker(
+                    latestItem.id,
+                    latestItem.gpsLat,
+                    latestItem.gpsLon,
+                    {
+                        iconUrl: 'images/circle-green.png',
+                        iconSize: [48, 48],
+                        iconAnchor: [24, 24]
+                    },
+                    "Time: " + new Date(latestItem.latestUpdateTime).toLocaleString()
+                );
+                mapService.centerMap(latestItem.gpsLat, latestItem.gpsLon);
+            }
         };
 
         var loadData = function () {
