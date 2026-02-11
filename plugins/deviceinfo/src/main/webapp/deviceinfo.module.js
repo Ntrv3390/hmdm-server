@@ -381,7 +381,7 @@ angular.module('plugin-deviceinfo', ['ngResource', 'ui.bootstrap', 'ui.router', 
         });
     })
     .controller('PluginDeviceDynamicInfoController', function ( $scope, $stateParams, $window, $interval,
-                                                                pluginDeviceInfoService,
+                                                                pluginDeviceInfoService, hmdmMap,
                                                                 localization, parseDynamicInfoRecord, spinnerService,
                                                                 alertService, pluginDeviceInfoExportService,
                                                                 DEVICE_PARAMS, WIFI_PARAMS, GPS_PARAMS,
@@ -423,6 +423,44 @@ angular.module('plugin-deviceinfo', ['ngResource', 'ui.bootstrap', 'ui.router', 
         };
 
         var loading = false;
+        var mapInitialized = false;
+        var mapService = hmdmMap.get();
+
+        var updateMap = function(items) {
+            if (!mapInitialized) {
+                setTimeout(function () {
+                    mapService.initMap($scope, 'locationMap', 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+                    mapInitialized = true;
+                    addMarkers(items);
+                }, 500);
+            } else {
+                addMarkers(items);
+            }
+        };
+
+        var addMarkers = function (items) {
+            if (!items) return;
+            var centered = false;
+            items.forEach(function(item) {
+                if (item.gpsLat && item.gpsLon) {
+                    mapService.addMarker(
+                        item.id,
+                        item.gpsLat,
+                        item.gpsLon,
+                        {
+                            iconUrl: 'images/circle-green.png',
+                            iconSize: [12, 12],
+                            iconAnchor: [6, 6]
+                        },
+                        "Time: " + new Date(item.latestUpdateTime).toLocaleString()
+                    );
+                    if (!centered) {
+                        mapService.centerMap(item.gpsLat, item.gpsLon);
+                        centered = true;
+                    }
+                }
+            });
+        };
 
         var loadData = function () {
             if (loading) {
@@ -444,6 +482,9 @@ angular.module('plugin-deviceinfo', ['ngResource', 'ui.bootstrap', 'ui.router', 
                 if (response.status === 'OK') {
                     $scope.data = response.data.items;
                     $scope.formData.totalItems = response.data.totalItemsCount;
+                    if ($scope.data && $scope.data.length > 0) {
+                        updateMap($scope.data);
+                    }
                 } else {
                     $scope.errorMessage = localization.localizeServerResponse(response);
                 }
