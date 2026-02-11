@@ -242,6 +242,17 @@
                          defaultValueComputed="nextval('worktime_user_override_id_seq'::regclass)"/>
     </changeSet>
 
+    <!-- Fix incorrect plugin view template path -->
+    <changeSet id="worktime-update-plugin-template-path-2026-02-11" author="worktime-plugin">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="plugins"/>
+        </preConditions>
+        <update tableName="plugins">
+            <column name="functionsviewtemplate" value="app/components/plugins/worktime/views/worktime_policies.html"/>
+            <where>identifier = 'worktime'</where>
+        </update>
+    </changeSet>
+
 </databaseChangeLog>
 
 
