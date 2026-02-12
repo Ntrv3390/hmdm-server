@@ -16,17 +16,10 @@ angular
       console.log("Error adding state plugin-worktime", e);
     }
 
-    $stateProvider.state("plugin-worktime-policies", {
-      url: "/plugin-worktime",
-      templateUrl:
-        "app/components/plugins/worktime/views/worktime_policies.html",
-      controller: "WorkTimePoliciesController",
-    });
-
-    $stateProvider.state("plugin-worktime-users", {
-      url: "/plugin-worktime/users",
-      templateUrl: "app/components/plugins/worktime/views/worktime_users.html",
-      controller: "WorkTimeUsersController",
+    $stateProvider.state("plugin-worktime-devices", {
+      url: "/plugin-worktime/devices",
+      templateUrl: "app/components/plugins/worktime/views/worktime_devices.html",
+      controller: "WorkTimeDevicesController",
     });
   })
   .factory("WorkTimePolicy", function ($resource) {
@@ -39,10 +32,11 @@ angular
       }
     );
   })
-  .factory("WorkTimeUser", function ($resource) {
-    return $resource("/rest/plugins/worktime/private/users/:userId", { userId: '@userId' }, {
+  .factory("WorkTimeDevice", function ($resource) {
+    return $resource("/rest/plugins/worktime/private/device/:deviceId", { deviceId: '@deviceId' }, {
       list: {
         method: 'GET',
+        url: '/rest/plugins/worktime/private/devices',
         isArray: true,
         transformResponse: function(data) {
           var response = angular.fromJson(data);
@@ -52,8 +46,10 @@ angular
           return response || [];
         }
       },
-      get: { method: 'GET' },
-      save: { method: 'POST' },
+      save: { 
+          method: 'POST',
+          url: '/rest/plugins/worktime/private/device'
+      },
       remove: { method: 'DELETE' }
     });
   })
@@ -291,12 +287,12 @@ angular
     }
   )
 
-  .controller("WorkTimeUsersController", function($scope, $uibModal, WorkTimePolicy, WorkTimeUser, localization, authService) {
-    $scope.users = [];
+  .controller("WorkTimeDevicesController", function($scope, $uibModal, WorkTimePolicy, WorkTimeDevice, localization, authService) {
+    $scope.devices = [];
     $scope.globalPolicy = { enabled: true, startTime: '09:00', endTime: '18:00' };
     $scope.error = null;
     $scope.canEdit = authService.isSuperAdmin() || authService.hasPermission('settings');
-    $scope.editingUser = null;
+    $scope.editingDevice = null;
     $scope.editingException = null;
     var modalInstance = null;
 
@@ -333,14 +329,14 @@ angular
         if (response && response.status === 'OK' && response.data) {
           $scope.globalPolicy = response.data;
         }
-        $scope.loadUsers();
+        $scope.loadDevices();
       });
     };
 
-    var buildExceptionFromRange = function(user) {
-      if (!user || !user.startDateTime || !user.endDateTime) return null;
-      var start = new Date(user.startDateTime);
-      var end = new Date(user.endDateTime);
+    var buildExceptionFromRange = function(device) {
+      if (!device || !device.startDateTime || !device.endDateTime) return null;
+      var start = new Date(device.startDateTime);
+      var end = new Date(device.endDateTime);
       if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
       return {
         dateFrom: start,
@@ -351,17 +347,17 @@ angular
       };
     };
 
-    var hasScheduledException = function(user) {
-      return user && user.startDateTime && user.endDateTime;
+    var hasScheduledException = function(device) {
+      return device && device.startDateTime && device.endDateTime;
     };
 
-    var isActiveException = function(user) {
-      if (user.exceptions && user.exceptions.length > 0) {
-        return user.exceptions.some(function(exc) { return exc.active; });
+    var isActiveException = function(device) {
+      if (device.exceptions && device.exceptions.length > 0) {
+        return device.exceptions.some(function(exc) { return exc.active; });
       }
-      if (hasScheduledException(user)) {
-        var start = new Date(user.startDateTime);
-        var end = new Date(user.endDateTime);
+      if (hasScheduledException(device)) {
+        var start = new Date(device.startDateTime);
+        var end = new Date(device.endDateTime);
         if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
           return new Date() >= start && new Date() <= end;
         }
@@ -369,52 +365,54 @@ angular
       return false;
     };
 
-    // Load users list
-    $scope.loadUsers = function() {
-      WorkTimeUser.list(function(response) {
-        $scope.users = angular.isArray(response) ? response : [];
-        $scope.users.forEach(function(user) {
-          if (!user.exceptions) {
-            user.exceptions = [];
+    // Load devices list
+    $scope.loadDevices = function() {
+      WorkTimeDevice.list(function(response) {
+        $scope.devices = angular.isArray(response) ? response : [];
+        $scope.devices.forEach(function(device) {
+          if (!device.exceptions) {
+            device.exceptions = [];
           }
-          user.exceptions.forEach(function(exc) {
+          device.exceptions.forEach(function(exc) {
             exc.dateFrom = parseLocalDate(exc.dateFrom);
             exc.dateTo = parseLocalDate(exc.dateTo);
           });
-          if (user.exceptions.length === 0 && user.enabled === false) {
-            var fallback = buildExceptionFromRange(user);
+          if (device.exceptions.length === 0 && device.enabled === false) {
+            var fallback = buildExceptionFromRange(device);
             if (fallback) {
-              user.exceptions.push(fallback);
+              device.exceptions.push(fallback);
             }
           }
-          var hasActive = isActiveException(user);
-          if (hasScheduledException(user)) {
-            user.toggleOn = false;
+          var hasActive = isActiveException(device);
+          if (hasScheduledException(device)) {
+            device.toggleOn = false;
           } else {
-            user.toggleOn = !!$scope.globalPolicy.enabled && !hasActive;
+            device.toggleOn = !!$scope.globalPolicy.enabled && !hasActive;
           }
+          // Ensure deviceName is set
+          if (!device.deviceName) device.deviceName = "Device " + device.deviceId;
         });
       }, function(error) {
-        $scope.error = 'Failed to load users: ' + (error && error.data ? error.data : 'Unknown error');
-        console.error('Error loading users:', error);
+        $scope.error = 'Failed to load devices: ' + (error && error.data ? error.data : 'Unknown error');
+        console.error('Error loading devices:', error);
       });
     };
 
-    // Toggle user exception (turn off means create exception)
-    $scope.toggleUserException = function(user) {
+    // Toggle device exception (turn off means create exception)
+    $scope.toggleDeviceException = function(device) {
       if (!$scope.canEdit || !$scope.globalPolicy.enabled) return;
 
-      if (user.toggleOn) {
-        if (user.exceptions && user.exceptions.length > 0) {
-          WorkTimeUser.remove({ userId: user.userId }, function() {
-            $scope.loadUsers();
+      if (device.toggleOn) {
+        if (device.exceptions && device.exceptions.length > 0) {
+          WorkTimeDevice.remove({ deviceId: device.deviceId }, function() {
+            $scope.loadDevices();
           });
         }
         return;
       }
 
-      $scope.editingUser = user;
-      var existing = (user.exceptions && user.exceptions.length > 0) ? user.exceptions[0] : null;
+      $scope.editingDevice = device;
+      var existing = (device.exceptions && device.exceptions.length > 0) ? device.exceptions[0] : null;
       $scope.editingException = existing ? angular.copy(existing) : {
         dateFrom: new Date(),
         dateTo: new Date(),
@@ -425,16 +423,16 @@ angular
     };
 
     // Edit existing exception
-    $scope.editException = function(user) {
+    $scope.editException = function(device) {
       if (!$scope.canEdit || !$scope.globalPolicy.enabled) return;
-      $scope.editingUser = user;
-      $scope.editingException = angular.copy(user.exceptions[0]) || {};
+      $scope.editingDevice = device;
+      $scope.editingException = angular.copy(device.exceptions[0]) || {};
       $scope.openExceptionModal();
     };
 
     // Save exception
     $scope.saveException = function() {
-      if (!$scope.editingUser || !$scope.editingException) return;
+      if (!$scope.editingDevice || !$scope.editingException) return;
 
       var startDateTime = combineDateTime($scope.editingException.dateFrom, $scope.editingException.timeFrom);
       var endDateTime = combineDateTime($scope.editingException.dateTo, $scope.editingException.timeTo);
@@ -452,16 +450,16 @@ angular
       }
 
       var override = {
-        userId: $scope.editingUser.userId,
+        deviceId: $scope.editingDevice.deviceId,
         enabled: false,
         startDateTime: startDateTime.toISOString(),
         endDateTime: endDateTime.toISOString()
       };
 
-      WorkTimeUser.save({ userId: $scope.editingUser.userId }, override, function(response) {
+      WorkTimeDevice.save({ deviceId: $scope.editingDevice.deviceId }, override, function(response) {
         if (response && response.status === 'OK') {
           $scope.closeExceptionModal();
-          $scope.loadUsers();
+          $scope.loadDevices();
         } else {
           $scope.error = response.message || 'Failed to save exception';
         }
@@ -471,10 +469,10 @@ angular
     };
 
     $scope.cancelException = function() {
-      if ($scope.editingUser) {
-        $scope.editingUser.toggleOn = true;
+      if ($scope.editingDevice) {
+        $scope.editingDevice.toggleOn = true;
       }
-      $scope.editingUser = null;
+      $scope.editingDevice = null;
       $scope.editingException = null;
       $scope.closeExceptionModal();
     };
@@ -500,10 +498,10 @@ angular
     };
 
     // Remove exception
-    $scope.removeException = function(user, exception) {
+    $scope.removeException = function(device, exception) {
       if (!confirm('Delete this exception?')) return;
-      WorkTimeUser.remove({ userId: user.userId }, function() {
-        $scope.loadUsers();
+      WorkTimeDevice.remove({ deviceId: device.deviceId }, function() {
+        $scope.loadDevices();
       });
     };
 

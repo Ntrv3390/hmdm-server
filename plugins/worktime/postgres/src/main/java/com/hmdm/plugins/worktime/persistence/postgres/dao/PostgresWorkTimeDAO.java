@@ -3,7 +3,7 @@ package com.hmdm.plugins.worktime.persistence.postgres.dao;
 import javax.inject.Inject;
 
 import com.hmdm.plugins.worktime.model.WorkTimePolicy;
-import com.hmdm.plugins.worktime.model.WorkTimeUserOverride;
+import com.hmdm.plugins.worktime.model.WorkTimeDeviceOverride;
 import com.hmdm.plugins.worktime.persistence.WorkTimeDAO;
 import com.hmdm.plugins.worktime.persistence.postgres.dao.mapper.PostgresWorkTimeMapper;
 import org.mybatis.guice.transactional.Transactional;
@@ -37,34 +37,34 @@ public class PostgresWorkTimeDAO implements WorkTimeDAO {
     }
 
     @Override
-    public List<WorkTimeUserOverride> getUserOverrides(int customerId) {
-        return mapper.getUserOverrides(customerId);
+    public List<WorkTimeDeviceOverride> getDeviceOverrides(int customerId) {
+        return mapper.getDeviceOverrides(customerId);
     }
 
     @Override
-    public WorkTimeUserOverride getUserOverride(int customerId, int userId) {
-        return mapper.getUserOverride(customerId, userId);
+    public WorkTimeDeviceOverride getDeviceOverride(int customerId, int deviceId) {
+        return mapper.getDeviceOverride(customerId, deviceId);
     }
 
     @Override
     @Transactional
-    public void saveUserOverride(WorkTimeUserOverride policy) {
-        WorkTimeUserOverride existing = mapper.getUserOverride(policy.getCustomerId(), policy.getUserId());
+    public void saveDeviceOverride(WorkTimeDeviceOverride policy) {
+        WorkTimeDeviceOverride existing = mapper.getDeviceOverride(policy.getCustomerId(), policy.getDeviceId());
         if (existing == null) {
-            mapper.insertUserOverride(policy);
+            mapper.insertDeviceOverride(policy);
         } else {
-            mapper.updateUserOverride(policy);
+            mapper.updateDeviceOverride(policy);
         }
     }
 
     @Override
     @Transactional
-    public void deleteUserOverride(int customerId, int userId) {
-        mapper.deleteUserOverride(customerId, userId);
+    public void deleteDeviceOverride(int customerId, int deviceId) {
+        mapper.deleteDeviceOverride(customerId, deviceId);
     }
 
     @Override
-    public List<WorkTimeUserOverride> getAllUserOverrides() {
-        return mapper.getAllUserOverrides();
+    public List<WorkTimeDeviceOverride> getAllDeviceOverrides() {
+        return mapper.getAllDeviceOverrides();
     }
 }

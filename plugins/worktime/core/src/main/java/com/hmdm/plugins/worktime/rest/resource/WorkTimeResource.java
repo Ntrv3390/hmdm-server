@@ -9,10 +9,12 @@ import java.util.List;
 import java.util.Map;
 
 import com.hmdm.plugins.worktime.model.WorkTimePolicy;
-import com.hmdm.plugins.worktime.model.WorkTimeUserOverride;
+import com.hmdm.plugins.worktime.model.WorkTimeDeviceOverride;
 import com.hmdm.plugins.worktime.persistence.WorkTimeDAO;
 import com.hmdm.persistence.UserDAO;
+import com.hmdm.persistence.DeviceDAO;
 import com.hmdm.persistence.domain.User;
+import com.hmdm.persistence.domain.Device;
 import com.hmdm.rest.json.Response;
 import com.hmdm.security.SecurityContext;
 import org.slf4j.Logger;
@@ -26,11 +28,13 @@ public class WorkTimeResource {
 
     private final WorkTimeDAO workTimeDAO;
     private final UserDAO userDAO;
+    private final DeviceDAO deviceDAO;
 
     @Inject
-    public WorkTimeResource(WorkTimeDAO workTimeDAO, UserDAO userDAO) {
+    public WorkTimeResource(WorkTimeDAO workTimeDAO, UserDAO userDAO, DeviceDAO deviceDAO) {
         this.workTimeDAO = workTimeDAO;
         this.userDAO = userDAO;
+        this.deviceDAO = deviceDAO;
     }
 
     private int getCustomerId() {
@@ -78,13 +82,13 @@ public class WorkTimeResource {
         return Response.OK(policy);
     }
 
-    // --- User override endpoints (admin only) ---
+    // --- Device override endpoints (admin only) ---
     @GET
-    @Path("/users")
-    public Response getUserOverrides() {
+    @Path("/devices")
+    public Response getDeviceOverrides() {
         User current = SecurityContext.get().getCurrentUser().orElse(null);
         if (current == null) {
-            log.error("Unauthorized attempt to access user overrides - not authenticated");
+            log.error("Unauthorized attempt to access device overrides - not authenticated");
             return Response.PERMISSION_DENIED();
         }
         
@@ -95,33 +99,33 @@ public class WorkTimeResource {
 
         int customerId = getCustomerId();
         
-        // Get all users in the current customer's scope
-        List<User> allUsers = userDAO.findAllUsers();
+        // Get all devices in the current customer's scope
+        List<Device> allDevices = deviceDAO.getAllDevices();
         
-        // Get overrides for those users
-        List<WorkTimeUserOverride> overrides = workTimeDAO.getUserOverrides(customerId);
+        // Get overrides for those devices
+        List<WorkTimeDeviceOverride> overrides = workTimeDAO.getDeviceOverrides(customerId);
         
-        // Combine users with their overrides
-        List<WorkTimeUserOverride> result = new java.util.ArrayList<>();
+        // Combine devices with their overrides
+        List<WorkTimeDeviceOverride> result = new java.util.ArrayList<>();
         DateTimeFormatter dateFmt = DateTimeFormatter.ISO_LOCAL_DATE;
         DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm");
         LocalDateTime now = LocalDateTime.now();
-        for (User user : allUsers) {
-            WorkTimeUserOverride override = overrides.stream()
-                    .filter(o -> o.getUserId() == user.getId())
+        for (Device device : allDevices) {
+            WorkTimeDeviceOverride override = overrides.stream()
+                    .filter(o -> o.getDeviceId() == device.getId())
                     .findFirst()
                     .orElse(null);
             
             if (override == null) {
                 // Create a default override (no exceptions, enabled)
-                override = new WorkTimeUserOverride();
+                override = new WorkTimeDeviceOverride();
                 override.setCustomerId(customerId);
-                override.setUserId(user.getId());
-                override.setUserName(user.getLogin());
+                override.setDeviceId(device.getId());
+                override.setDeviceName(device.getNumber());
                 override.setEnabled(true);
                 override.setExceptions(new java.util.ArrayList<>());
             } else {
-                override.setUserName(user.getLogin());
+                override.setDeviceName(device.getNumber());
             }
             if (override.getExceptions() == null) {
                 override.setExceptions(new java.util.ArrayList<>());
@@ -130,7 +134,7 @@ public class WorkTimeResource {
                 LocalDateTime start = override.getStartDateTime().toLocalDateTime();
                 LocalDateTime end = override.getEndDateTime().toLocalDateTime();
                 if (now.isAfter(end)) {
-                    workTimeDAO.deleteUserOverride(customerId, user.getId());
+                    workTimeDAO.deleteDeviceOverride(customerId, device.getId());
                     override.setExceptions(new java.util.ArrayList<>());
                     result.add(override);
                     continue;
@@ -150,77 +154,44 @@ public class WorkTimeResource {
         return Response.OK(result);
     }
 
-    @GET
-    @Path("/users/{userId}")
-    public Response getUserOverride(@PathParam("userId") int userId) {
+    @POST
+    @Path("/device")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response saveDeviceOverride(WorkTimeDeviceOverride override) {
+        // Check permissions
         User current = SecurityContext.get().getCurrentUser().orElse(null);
         if (current == null) {
-            log.error("Unauthorized attempt to access user override: {} - not authenticated", userId);
-            return Response.PERMISSION_DENIED();
+             return Response.PERMISSION_DENIED();
         }
-        
         if (!SecurityContext.get().isSuperAdmin() && !this.userDAO.isOrgAdmin(current)) {
-            log.warn("User {} is not allowed to access override {}: must be admin", current.getLogin(), userId);
             return Response.PERMISSION_DENIED();
         }
 
         int customerId = getCustomerId();
-        WorkTimeUserOverride override = workTimeDAO.getUserOverride(customerId, userId);
+        override.setCustomerId(customerId);
+        
+        // Validation needs to be updated to check deviceId instead of userId
+        if (override.getDeviceId() <= 0) {
+             return Response.ERROR("Invalid device ID");
+        }
+
+        workTimeDAO.saveDeviceOverride(override);
         return Response.OK(override);
     }
 
-    @POST
-    @Path("/users/{userId}")
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response saveUserOverride(@PathParam("userId") int userId, WorkTimeUserOverride override) {
-        User current = SecurityContext.get().getCurrentUser().orElse(null);
-        if (current == null) {
-            log.error("Unauthorized attempt to save user override: {} - not authenticated", userId);
-            return Response.PERMISSION_DENIED();
-        }
-        
-        if (!SecurityContext.get().isSuperAdmin() && !this.userDAO.isOrgAdmin(current)) {
-            log.warn("User {} is not allowed to save override {}: must be admin", current.getLogin(), userId);
-            return Response.PERMISSION_DENIED();
-        }
-
-        int customerId = getCustomerId();
-        if (override != null && !override.isEnabled()) {
-            if (override.getStartDateTime() == null || override.getEndDateTime() == null) {
-                return Response.ERROR("Exception start/end time required");
-            }
-            LocalDateTime start = override.getStartDateTime().toLocalDateTime();
-            LocalDateTime end = override.getEndDateTime().toLocalDateTime();
-            if (end.isBefore(start)) {
-                return Response.ERROR("Exception end time must be after start time");
-            }
-            if (end.isBefore(LocalDateTime.now())) {
-                return Response.ERROR("Exception end time must be in the future");
-            }
-        }
-        override.setCustomerId(customerId);
-        override.setUserId(userId);
-        workTimeDAO.saveUserOverride(override);
-        WorkTimeUserOverride saved = workTimeDAO.getUserOverride(customerId, userId);
-        return Response.OK(saved != null ? saved : override);
-    }
-
     @DELETE
-    @Path("/users/{userId}")
-    public Response deleteUserOverride(@PathParam("userId") int userId) {
+    @Path("/device/{id}")
+    public Response deleteDeviceOverride(@PathParam("id") int deviceId) {
         User current = SecurityContext.get().getCurrentUser().orElse(null);
         if (current == null) {
-            log.error("Unauthorized attempt to delete user override: {} - not authenticated", userId);
             return Response.PERMISSION_DENIED();
         }
-        
         if (!SecurityContext.get().isSuperAdmin() && !this.userDAO.isOrgAdmin(current)) {
-            log.warn("User {} is not allowed to delete override {}: must be admin", current.getLogin(), userId);
             return Response.PERMISSION_DENIED();
         }
 
         int customerId = getCustomerId();
-        workTimeDAO.deleteUserOverride(customerId, userId);
+        workTimeDAO.deleteDeviceOverride(customerId, deviceId);
         return Response.OK();
     }
 }

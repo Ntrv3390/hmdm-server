@@ -12,9 +12,9 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
-@ApiModel(description = "Per-user work time override")
+@ApiModel(description = "Per-device work time override")
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class WorkTimeUserOverride implements Serializable {
+public class WorkTimeDeviceOverride implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -24,11 +24,11 @@ public class WorkTimeUserOverride implements Serializable {
     @ApiModelProperty("Customer ID")
     private int customerId;
 
-    @ApiModelProperty("User ID")
-    private int userId;
+    @ApiModelProperty("Device ID")
+    private int deviceId;
 
-    @ApiModelProperty("User name")
-    private String userName;
+    @ApiModelProperty("Device name")
+    private String deviceName;
 
     @ApiModelProperty("Enabled flag")
     private boolean enabled = true;
@@ -68,7 +68,7 @@ public class WorkTimeUserOverride implements Serializable {
     @ApiModelProperty("List of exceptions (transient, not persisted)")
     private java.util.List<java.util.Map<String, Object>> exceptions;
 
-    public WorkTimeUserOverride() {
+    public WorkTimeDeviceOverride() {
     }
 
     public Integer getId() {
@@ -87,20 +87,20 @@ public class WorkTimeUserOverride implements Serializable {
         this.customerId = customerId;
     }
 
-    public int getUserId() {
-        return userId;
+    public int getDeviceId() {
+        return deviceId;
     }
 
-    public void setUserId(int userId) {
-        this.userId = userId;
+    public void setDeviceId(int deviceId) {
+        this.deviceId = deviceId;
     }
 
-    public String getUserName() {
-        return userName;
+    public String getDeviceName() {
+        return deviceName;
     }
 
-    public void setUserName(String userName) {
-        this.userName = userName;
+    public void setDeviceName(String deviceName) {
+        this.deviceName = deviceName;
     }
 
     public boolean isEnabled() {

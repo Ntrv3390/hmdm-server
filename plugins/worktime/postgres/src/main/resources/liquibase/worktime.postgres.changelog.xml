@@ -253,6 +253,29 @@
         </update>
     </changeSet>
 
+    <!-- ========================================================= -->
+    <!-- Rename user override to device override                  -->
+    <!-- ========================================================= -->
+    <changeSet id="worktime-rename-user-to-device-override" author="worktime-plugin">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="worktime_user_override"/>
+            <not>
+                <tableExists tableName="worktime_device_override"/>
+            </not>
+        </preConditions>
+        <renameTable oldTableName="worktime_user_override" newTableName="worktime_device_override"/>
+    </changeSet>
+
+    <changeSet id="worktime-rename-user-id-to-device-id" author="worktime-plugin">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="worktime_device_override"/>
+            <columnExists tableName="worktime_device_override" columnName="user_id"/>
+        </preConditions>
+        <!-- Truncate first since IDs are incompatible -->
+        <sql>TRUNCATE TABLE worktime_device_override</sql>
+        <renameColumn tableName="worktime_device_override" oldColumnName="user_id" newColumnName="device_id" columnDataType="INT"/>
+    </changeSet>
+
 </databaseChangeLog>
 
 

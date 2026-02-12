@@ -1,7 +1,7 @@
 package com.hmdm.plugins.worktime.persistence.postgres.dao.mapper;
 
 import com.hmdm.plugins.worktime.model.WorkTimePolicy;
-import com.hmdm.plugins.worktime.model.WorkTimeUserOverride;
+import com.hmdm.plugins.worktime.model.WorkTimeDeviceOverride;
 import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
@@ -13,17 +13,17 @@ public interface PostgresWorkTimeMapper {
 
     void updateGlobalPolicy(WorkTimePolicy policy);
 
-    // User overrides
-    List<WorkTimeUserOverride> getUserOverrides(@Param("customerId") int customerId);
+    // Device overrides
+    List<WorkTimeDeviceOverride> getDeviceOverrides(@Param("customerId") int customerId);
 
-    WorkTimeUserOverride getUserOverride(@Param("customerId") int customerId, @Param("userId") int userId);
+    WorkTimeDeviceOverride getDeviceOverride(@Param("customerId") int customerId, @Param("deviceId") int deviceId);
 
-    void insertUserOverride(WorkTimeUserOverride override);
+    void insertDeviceOverride(WorkTimeDeviceOverride override);
 
-    void updateUserOverride(WorkTimeUserOverride override);
+    void updateDeviceOverride(WorkTimeDeviceOverride override);
 
-    void deleteUserOverride(@Param("customerId") int customerId, @Param("userId") int userId);
+    void deleteDeviceOverride(@Param("customerId") int customerId, @Param("deviceId") int deviceId);
 
-    // Get all user overrides across all customers (for cleanup task)
-    List<WorkTimeUserOverride> getAllUserOverrides();
+    // Get all device overrides across all customers (for cleanup task)
+    List<WorkTimeDeviceOverride> getAllDeviceOverrides();
 }

@@ -1,4 +1,4 @@
-<div ng-controller="WorkTimeUsersController" class="worktime-wrapper">
+<div class="worktime-wrapper">
   <style>
     .worktime-wrapper {
       margin-top: 80px;
@@ -58,8 +58,8 @@
       background: #f7f9fc;
     }
 
-    /* User row */
-    .user-row {
+    /* Device row */
+    .device-row {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
@@ -71,22 +71,22 @@
       transition: all 0.2s ease;
     }
 
-    .user-row:hover {
+    .device-row:hover {
       transform: translateY(-1px);
       box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
     }
 
-    .user-info {
+    .device-info {
       flex: 1;
     }
 
-    .user-toggle {
+    .device-toggle {
       margin: 0 20px;
       font-weight: 600;
       text-align: center;
     }
 
-    .user-actions {
+    .device-actions {
       display: flex;
       gap: 8px;
     }
@@ -165,7 +165,7 @@
             <a href="/#/plugin-worktime">Global Policy</a>
           </li>
           <li role="presentation" class="active">
-            <a href="/#/plugin-worktime/users">User Exceptions</a>
+            <a href="/#/plugin-worktime/devices">Device Exceptions</a>
           </li>
         </ul>
       </div>
@@ -219,31 +219,31 @@
       </div>
     </div>
 
-    <!-- User Exceptions -->
+    <!-- Device Exceptions -->
     <div class="row">
       <div class="col-md-12">
         <div class="panel panel-default shadow-card">
           <div class="panel-heading">
             <h3 class="panel-title">
-              <i class="glyphicon glyphicon-user"></i>
-              User Exceptions
+              <i class="glyphicon glyphicon-phone"></i>
+              Device Exceptions
             </h3>
           </div>
 
           <div class="panel-body">
-            <!-- Users -->
-            <div ng-repeat="user in users" class="user-row">
-              <div class="user-info">
-                <strong>{{user.userName || 'User ' + user.userId}}</strong>
+            <!-- Devices -->
+            <div ng-repeat="device in devices" class="device-row">
+              <div class="device-info">
+                <strong>{{device.deviceName || 'Device ' + device.deviceId}}</strong>
                 <div
                   class="text-muted"
                   style="font-size: 11px; margin-top: 5px"
                 >
-                  ID: {{user.userId}}
+                  ID: {{device.deviceId}}
                 </div>
 
                 <div
-                  ng-if="user.exceptions && user.exceptions.length > 0"
+                  ng-if="device.exceptions && device.exceptions.length > 0"
                   class="exception-list"
                 >
                   <div
@@ -253,7 +253,7 @@
                   </div>
 
                   <div
-                    ng-repeat="exc in user.exceptions"
+                    ng-repeat="exc in device.exceptions"
                     class="exception-item"
                   >
                     {{exc.dateFrom | date:'MMM dd, yyyy'}} - {{exc.timeFrom}} |
@@ -261,7 +261,7 @@
 
                     <button
                       class="btn btn-xs btn-danger"
-                      ng-click="removeException(user, exc)"
+                      ng-click="removeException(device, exc)"
                     >
                       <i class="glyphicon glyphicon-trash"></i>
                     </button>
@@ -269,21 +269,21 @@
                 </div>
               </div>
 
-              <div class="user-toggle">
+              <div class="device-toggle">
                 <label class="checkbox-inline" style="margin: 0">
                   <input
                     type="checkbox"
-                    ng-model="user.toggleOn"
-                    ng-change="toggleUserException(user)"
+                    ng-model="device.toggleOn"
+                    ng-change="toggleDeviceException(device)"
                     ng-disabled="!canEdit || !globalPolicy.enabled"
                   />
                   <span
-                    ng-if="user.toggleOn"
+                    ng-if="device.toggleOn"
                     style="color: #7a9ab9; font-weight: 600"
                     >ON</span
                   >
                   <span
-                    ng-if="!user.toggleOn"
+                    ng-if="!device.toggleOn"
                     style="color: #d9534f; font-weight: 600"
                     >OFF</span
                   >
@@ -291,12 +291,12 @@
               </div>
 
               <div
-                class="user-actions"
-                ng-if="canEdit && user.exceptions && user.exceptions.length > 0 && globalPolicy.enabled"
+                class="device-actions"
+                ng-if="canEdit && device.exceptions && device.exceptions.length > 0 && globalPolicy.enabled"
               >
                 <button
                   class="btn btn-sm btn-primary"
-                  ng-click="editException(user)"
+                  ng-click="editException(device)"
                 >
                   <i class="glyphicon glyphicon-edit"></i> Edit
                 </button>
@@ -304,8 +304,8 @@
             </div>
 
             <!-- Empty State -->
-            <div ng-if="users.length === 0" class="text-muted-center">
-              No users found
+            <div ng-if="devices.length === 0" class="text-muted-center">
+              No devices found
             </div>
           </div>
         </div>
@@ -317,10 +317,10 @@
       <button type="button" class="close" ng-click="cancelException()" style="color:white; opacity:0.9;">&times;</button>
       <h4 class="modal-title">
         <span ng-if="!editingException.id">
-          Create Exception for {{editingUser.userName}}
+          Create Exception for {{editingDevice.deviceName}}
         </span>
         <span ng-if="editingException.id">
-          Edit Exception for {{editingUser.userName}}
+          Edit Exception for {{editingDevice.deviceName}}
         </span>
       </h4>
     </div>
@@ -331,7 +331,7 @@
         <div class="alert alert-info" style="border-radius:10px; border:none;">
           <strong>Note:</strong>
           This exception will turn OFF work time enforcement for the selected
-          user during the specified dates and times.
+          device during the specified dates and times.
         </div>
 
         <div class="form-group">

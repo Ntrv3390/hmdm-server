@@ -1,6 +1,6 @@
 package com.hmdm.plugins.worktime.task;
 
-import com.hmdm.plugins.worktime.model.WorkTimeUserOverride;
+import com.hmdm.plugins.worktime.model.WorkTimeDeviceOverride;
 import com.hmdm.plugins.worktime.persistence.WorkTimeDAO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * Task to clean up expired user exceptions.
+ * Task to clean up expired device exceptions.
  * Runs periodically to check for and remove expired exceptions.
  */
 @Singleton
@@ -27,7 +27,7 @@ public class ExpiredExceptionCleanupTask {
     }
 
     /**
-     * Clean up all expired user exceptions across all customers.
+     * Clean up all expired device exceptions across all customers.
      * This method is called periodically by the BackgroundTaskRunnerService.
      */
     public void cleanupExpiredExceptions() {
@@ -35,21 +35,21 @@ public class ExpiredExceptionCleanupTask {
             log.debug("Running expired exception cleanup task");
             LocalDateTime now = LocalDateTime.now();
             
-            // Get all user overrides
-            List<WorkTimeUserOverride> allOverrides = workTimeDAO.getAllUserOverrides();
+            // Get all device overrides
+            List<WorkTimeDeviceOverride> allOverrides = workTimeDAO.getAllDeviceOverrides();
             
             int cleanedCount = 0;
-            for (WorkTimeUserOverride override : allOverrides) {
+            for (WorkTimeDeviceOverride override : allOverrides) {
                 if (isExpired(override, now)) {
-                    log.info("Deleting expired exception for user {} in customer {}", 
-                             override.getUserId(), override.getCustomerId());
-                    workTimeDAO.deleteUserOverride(override.getCustomerId(), override.getUserId());
+                    log.info("Deleting expired exception for device {} in customer {}", 
+                             override.getDeviceId(), override.getCustomerId());
+                    workTimeDAO.deleteDeviceOverride(override.getCustomerId(), override.getDeviceId());
                     cleanedCount++;
                 }
             }
             
             if (cleanedCount > 0) {
-                log.info("Cleaned up {} expired user exceptions", cleanedCount);
+                log.info("Cleaned up {} expired device exceptions", cleanedCount);
             } else {
                 log.debug("No expired exceptions found");
             }
@@ -61,7 +61,7 @@ public class ExpiredExceptionCleanupTask {
     /**
      * Check if an exception has expired.
      */
-    private boolean isExpired(WorkTimeUserOverride override, LocalDateTime now) {
+    private boolean isExpired(WorkTimeDeviceOverride override, LocalDateTime now) {
         // Only check exceptions (enabled=false with date range)
         if (override.isEnabled()) {
             return false;

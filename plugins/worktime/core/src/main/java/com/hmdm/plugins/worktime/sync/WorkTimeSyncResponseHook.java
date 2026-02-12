@@ -51,19 +51,10 @@ public class WorkTimeSyncResponseHook implements SyncResponseHook {
 
             int customerId = device.getCustomerId();
             
-            // Note: In Headwind MDM, devices are not directly assigned to users.
-            // The concept of "user" in worktime context typically means:
-            // - The admin user who configures the device/group assignment
-            // - Or a logical user ID based on device configuration or group
-            // 
-            // For now, we'll use deviceId as a fallback for userId
-            // This allows admins to create per-device overrides using the device ID
-            int userId = deviceId; // Map deviceId to userId for per-device policies
-            
-            // Resolve effective worktime policy for this device/user
+            // Resolve effective worktime policy for this device
             EffectiveWorkTimePolicy policy = workTimeService.resolveEffectivePolicy(
                 customerId, 
-                userId, 
+                deviceId, 
                 LocalDateTime.now()
             );
 

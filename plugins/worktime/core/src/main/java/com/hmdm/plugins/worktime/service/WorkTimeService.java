@@ -1,7 +1,7 @@
 package com.hmdm.plugins.worktime.service;
 
 import com.hmdm.plugins.worktime.model.WorkTimePolicy;
-import com.hmdm.plugins.worktime.model.WorkTimeUserOverride;
+import com.hmdm.plugins.worktime.model.WorkTimeDeviceOverride;
 import com.hmdm.plugins.worktime.persistence.WorkTimeDAO;
 
 import javax.inject.Inject;
@@ -23,7 +23,7 @@ public class WorkTimeService {
         this.dao = dao;
     }
 
-    public EffectiveWorkTimePolicy resolveEffectivePolicy(int customerId, int userId, LocalDateTime now) {
+    public EffectiveWorkTimePolicy resolveEffectivePolicy(int customerId, int deviceId, LocalDateTime now) {
         // load global
         WorkTimePolicy global = dao.getGlobalPolicy(customerId);
 
@@ -38,8 +38,8 @@ public class WorkTimeService {
             return new EffectiveWorkTimePolicy(false, global.getStartTime(), global.getEndTime(), globalDays, parseAllowed(global.getAllowedAppsDuringWork()), parseAllowed(global.getAllowedAppsOutsideWork()));
         }
 
-        // Check user override
-        WorkTimeUserOverride override = dao.getUserOverride(customerId, userId);
+        // Check device override
+        WorkTimeDeviceOverride override = dao.getDeviceOverride(customerId, deviceId);
         if (override != null && !override.isEnabled()) {
             if (isExceptionActive(override, now)) {
                 int globalDays = global.getDaysOfWeek() != null ? global.getDaysOfWeek() : 127;
@@ -48,7 +48,7 @@ public class WorkTimeService {
                         parseAllowed(global.getAllowedAppsOutsideWork()));
             }
             if (isExceptionExpired(override, now)) {
-                dao.deleteUserOverride(customerId, userId);
+                dao.deleteDeviceOverride(customerId, deviceId);
             }
         }
         if (override != null && override.isEnabled()) {
@@ -68,7 +68,7 @@ public class WorkTimeService {
         return new EffectiveWorkTimePolicy(true, global.getStartTime(), global.getEndTime(), globalDays, parseAllowed(global.getAllowedAppsDuringWork()), parseAllowed(global.getAllowedAppsOutsideWork()));
     }
 
-    private boolean isExceptionActive(WorkTimeUserOverride override, LocalDateTime now) {
+    private boolean isExceptionActive(WorkTimeDeviceOverride override, LocalDateTime now) {
         if (override.getStartDateTime() == null || override.getEndDateTime() == null) {
             return false;
         }
@@ -77,7 +77,7 @@ public class WorkTimeService {
         return !now.isBefore(start) && !now.isAfter(end);
     }
 
-    private boolean isExceptionExpired(WorkTimeUserOverride override, LocalDateTime now) {
+    private boolean isExceptionExpired(WorkTimeDeviceOverride override, LocalDateTime now) {
         if (override.getEndDateTime() == null) {
             return false;
         }
