@@ -57,6 +57,9 @@
     <!-- Fast device search by last characters, here's the length -->
     <Parameter name="device.fast.search.chars" value="5"/>
 
+    <!-- Fix for sql.init.script.path issue -->
+    <Parameter name="sql.init.script.path" value=""/>
+
     <!-- Optional tag for MQTT authentication for more security
          (supported by Headwind MDM launcher v5.05 and above) -->
     <Parameter name="mqtt.auth" value="1"/>

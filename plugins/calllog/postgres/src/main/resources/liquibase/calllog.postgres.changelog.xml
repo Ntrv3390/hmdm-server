@@ -117,11 +117,12 @@
             <column name="name" value="plugin.calllog.localization.plugin.name"/>
             <column name="description" value=""/>
             <column name="javascriptModuleFile" value="app/components/plugins/calllog/calllog.module.js"/>
-            <column name="functionsViewTemplate" value=""/>
+            <column name="functionsViewTemplate" value="app/components/plugins/calllog/views/modal.html"/>
             <column name="settingsViewTemplate" value="app/components/plugins/calllog/views/settings.html"/>
             <column name="namelocalizationkey" value="plugin.calllog.localization.plugin.name"/>
             <column name="settingsPermission" value="plugin_calllog_access"/>
-            <column name="deviceFunctionsPermission" value=""/>
+            <column name="functionsPermission" value="plugin_calllog_access"/>
+            <column name="deviceFunctionsPermission" value="plugin_calllog_access"/>
             <column name="disabled" valueBoolean="false"/>
         </insert>
     </changeSet>
@@ -154,7 +155,7 @@
                 FROM userrolePermissions urp
                 JOIN permissions p ON urp.permissionId = p.id
                 JOIN userroles ur ON urp.roleId = ur.id
-                WHERE p.name = 'plugin_calllog_access' AND ur.name = 'Super Admin'
+                WHERE p.name = 'plugin_calllog_access' AND ur.name = 'Super-Admin'
             </sqlCheck>
         </preConditions>
 
@@ -162,7 +163,7 @@
             INSERT INTO userrolePermissions (roleId, permissionId)
             SELECT ur.id, p.id
             FROM userroles ur, permissions p
-            WHERE ur.name = 'Super Admin' AND p.name = 'plugin_calllog_access'
+            WHERE ur.name = 'Super-Admin' AND p.name = 'plugin_calllog_access'
         </sql>
     </changeSet>
 

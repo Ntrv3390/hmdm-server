@@ -21,6 +21,12 @@ angular
       templateUrl: "app/components/plugins/worktime/views/worktime_devices.html",
       controller: "WorkTimeDevicesController",
     });
+
+    $stateProvider.state("plugin-worktime-policies", {
+      url: "/plugin-worktime/policies",
+      templateUrl: "app/components/plugins/worktime/views/worktime_policies.html",
+      controller: "WorkTimePoliciesController",
+    });
   })
   .factory("WorkTimePolicy", function ($resource) {
     return $resource(

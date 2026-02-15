@@ -70,7 +70,7 @@ INSERT INTO applications (id, pkg, name, showicon, customerid, system, latestver
     (4, 'com.google.android.apps.docs', 'Google Drive', true, 1, true, 10003, false),
     (30, 'com.huawei.android.launcher', 'Default launcher (Huawei)', false, 1, true, 10029, false),
     (8, 'com.android.browser', 'Browser (generic)', true, 1, true, 10007, false),
-    (46, 'com.hmdm.launcher', 'Headwind MDM', false, 1, false, 10045, false),
+    (46, 'com.hmdm.launcher', 'Brother Pharmach MDM', false, 1, false, 10045, false),
     (47, 'com.huawei.android.internal.app', 'Huawei Launcher Selector', false, 1, true, 10046, false),
     (48, 'com.hmdm.pager', 'Headwind MDM Pager Plugin', true, 1, false, 10047, false),
     (49, 'com.hmdm.phoneproxy', 'Dialer Helper', true, 1, false, 10048, false),
@@ -429,3 +429,45 @@ SELECT pg_catalog.setval('public.devices_id_seq', 1, true);
 INSERT INTO plugin_devicelog_settings_rules (id, settingid, name, active, applicationid, severity) VALUES (1, 1, 'Headwind MDM', true, 46, 'VERBOSE');
 SELECT pg_catalog.setval('public.plugin_devicelog_settings_rules_id_seq', 1, true);
 
+
+-- Register Work Time Plugin
+INSERT INTO permissions (name, description) VALUES ('plugin_worktime_access', 'Access to Work Time plugin');
+INSERT INTO userRolePermissions (roleId, permissionId) VALUES (1, currval('permissions_id_seq'));
+INSERT INTO userRolePermissions (roleId, permissionId) VALUES (2, currval('permissions_id_seq'));
+
+INSERT INTO plugins (
+    identifier, name, description,
+    javascriptModuleFile,
+    functionsViewTemplate,
+    settingsViewTemplate,
+    namelocalizationkey,
+    settingsPermission, functionsPermission, deviceFunctionsPermission
+) VALUES (
+    'worktime', 'Work Time', 'Manage working hours',
+    'app/components/plugins/worktime/worktime.module.js',
+    'app/components/plugins/worktime/views/worktime_policies.html',
+    'app/components/plugins/worktime/views/worktime_devices.html',
+    'plugin.worktime.localization.key.name',
+    'plugin_worktime_access', 'plugin_worktime_access', 'plugin_worktime_access'
+);
+
+-- Register Call Log Plugin
+INSERT INTO permissions (name, description) VALUES ('plugin_calllog_access', 'Access to Call Log Plugin');
+INSERT INTO userRolePermissions (roleId, permissionId) VALUES (1, currval('permissions_id_seq'));
+INSERT INTO userRolePermissions (roleId, permissionId) VALUES (2, currval('permissions_id_seq'));
+
+INSERT INTO plugins (
+    identifier, name, description,
+    javascriptModuleFile,
+    functionsViewTemplate,
+    settingsViewTemplate,
+    namelocalizationkey,
+    settingsPermission, functionsPermission, deviceFunctionsPermission
+) VALUES (
+    'calllog', 'Call Log', 'Track device call logs',
+    'app/components/plugins/calllog/calllog.module.js',
+    'app/components/plugins/calllog/views/modal.html',
+    'app/components/plugins/calllog/views/settings.html',
+    'plugin.calllog.localization.plugin.name',
+    'plugin_calllog_access', 'plugin_calllog_access', 'plugin_calllog_access'
+);

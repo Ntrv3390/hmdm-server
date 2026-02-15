@@ -90,7 +90,10 @@
     <changeSet id="worktime-create-user-override" author="worktime-plugin">
         <preConditions onFail="MARK_RAN">
             <not>
-                <tableExists tableName="worktime_user_override"/>
+                <or>
+                    <tableExists tableName="worktime_user_override"/>
+                    <tableExists tableName="worktime_device_override"/>
+                </or>
             </not>
         </preConditions>
 
@@ -208,7 +211,7 @@
     </changeSet>
 
     <!-- Ensure sequence/default for id in older schemas -->
-    <changeSet id="worktime-user-override-id-seq-2026-02-07" author="worktime-plugin">
+    <changeSet id="worktime-user-override-id-seq-2026-02-07" author="worktime-plugin" failOnError="false">
         <preConditions onFail="CONTINUE">
             <tableExists tableName="worktime_user_override"/>
             <not>
@@ -276,6 +279,33 @@
         <renameColumn tableName="worktime_device_override" oldColumnName="user_id" newColumnName="device_id" columnDataType="INT"/>
     </changeSet>
 
+
+    <changeSet id="worktime-plugin-registration-init" author="mohammed" context="common">
+         <preConditions onFail="MARK_RAN">
+            <not>
+                <sqlCheck expectedResult="1">SELECT COUNT(*) FROM plugins WHERE identifier = 'worktime'</sqlCheck>
+            </not>
+        </preConditions>
+        <sql>
+            INSERT INTO permissions (name, description) VALUES ('plugin_worktime_access', 'Access to Work Time plugin');
+            INSERT INTO userRolePermissions (roleId, permissionId) VALUES (1, currval('permissions_id_seq'));
+            INSERT INTO userRolePermissions (roleId, permissionId) VALUES (2, currval('permissions_id_seq'));
+
+            INSERT INTO plugins (
+                identifier, name, description,
+                javascriptModuleFile,
+                functionsViewTemplate,
+                settingsViewTemplate,
+                namelocalizationkey,
+                settingsPermission, functionsPermission, deviceFunctionsPermission
+            ) VALUES (
+                'worktime', 'Work Time', 'Manage working hours',
+                'app/components/plugins/worktime/worktime.module.js',
+                'app/components/plugins/worktime/views/worktime_policies.html',
+                'app/components/plugins/worktime/views/worktime_devices.html',
+                'plugin.worktime.localization.key.name',
+                'plugin_worktime_access', 'plugin_worktime_access', 'plugin_worktime_access'
+            );
+        </sql>
+    </changeSet>
 </databaseChangeLog>
-
-
