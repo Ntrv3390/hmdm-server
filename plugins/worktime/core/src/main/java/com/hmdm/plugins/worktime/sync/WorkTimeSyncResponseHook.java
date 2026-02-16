@@ -16,8 +16,13 @@ import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 
 /**
- * <p>Sync response hook for WorkTime plugin.</p>
- * <p>Automatically delivers worktime policy to Android devices during configuration sync.</p>
+ * <p>
+ * Sync response hook for WorkTime plugin.
+ * </p>
+ * <p>
+ * Automatically delivers worktime policy to Android devices during
+ * configuration sync.
+ * </p>
  *
  * @author hmdm
  */
@@ -26,14 +31,14 @@ public class WorkTimeSyncResponseHook implements SyncResponseHook {
 
     private static final Logger log = LoggerFactory.getLogger(WorkTimeSyncResponseHook.class);
     private static final String WORKTIME_CUSTOM_FIELD = "custom1"; // Using custom1 field for worktime data
-    
+
     private final UnsecureDAO unsecureDAO;
     private final WorkTimeService workTimeService;
     private final ObjectMapper objectMapper;
 
     @Inject
-    public WorkTimeSyncResponseHook(UnsecureDAO unsecureDAO, 
-                                   WorkTimeService workTimeService) {
+    public WorkTimeSyncResponseHook(UnsecureDAO unsecureDAO,
+            WorkTimeService workTimeService) {
         this.unsecureDAO = unsecureDAO;
         this.workTimeService = workTimeService;
         this.objectMapper = new ObjectMapper();
@@ -41,6 +46,7 @@ public class WorkTimeSyncResponseHook implements SyncResponseHook {
 
     @Override
     public SyncResponseInt handle(int deviceId, SyncResponseInt original) {
+        log.debug("WorkTimeSyncResponseHook: Handling sync for device {}", deviceId);
         try {
             // Get device information
             Device device = this.unsecureDAO.getDeviceById(deviceId);
@@ -50,38 +56,37 @@ public class WorkTimeSyncResponseHook implements SyncResponseHook {
             }
 
             int customerId = device.getCustomerId();
-            
+
             // Resolve effective worktime policy for this device
             EffectiveWorkTimePolicy policy = workTimeService.resolveEffectivePolicy(
-                customerId, 
-                deviceId, 
-                LocalDateTime.now()
-            );
+                    customerId,
+                    deviceId,
+                    LocalDateTime.now());
 
             // Create wrapper object with metadata
             WorkTimePolicyWrapper wrapper = new WorkTimePolicyWrapper(policy);
             String wrapperJson = objectMapper.writeValueAsString(wrapper);
-            
+
             // Use reflection to call setCustom1() method since plugins don't have
             // compile-time access to SyncResponse class (only the interface)
             try {
                 Method setCustom1 = original.getClass().getMethod("setCustom1", String.class);
                 setCustom1.invoke(original, wrapperJson);
-                
-                log.debug("Injected worktime policy for device {}: enabled={}, customerId={}", 
-                         deviceId, policy.isEnforcementEnabled(), customerId);
+
+                log.debug("Injected worktime policy for device {}: enabled={}, customerId={}",
+                        deviceId, policy.isEnforcementEnabled(), customerId);
             } catch (NoSuchMethodException e) {
                 log.warn("SyncResponse does not have setCustom1 method, cannot inject worktime policy");
             }
 
             return original;
-            
+
         } catch (Exception e) {
             log.error("Error adding worktime policy to sync response for device {}", deviceId, e);
             return original; // Return original response if error occurs
         }
     }
-    
+
     /**
      * Wrapper class for worktime policy with metadata for Android client.
      */
@@ -89,20 +94,36 @@ public class WorkTimeSyncResponseHook implements SyncResponseHook {
         private String pluginId = "worktime";
         private long timestamp = System.currentTimeMillis();
         private EffectiveWorkTimePolicy policy;
-        
-        public WorkTimePolicyWrapper() {}
-        
+
+        public WorkTimePolicyWrapper() {
+        }
+
         public WorkTimePolicyWrapper(EffectiveWorkTimePolicy policy) {
             this.policy = policy;
         }
-        
-        public String getPluginId() { return pluginId; }
-        public void setPluginId(String pluginId) { this.pluginId = pluginId; }
-        
-        public long getTimestamp() { return timestamp; }
-        public void setTimestamp(long timestamp) { this.timestamp = timestamp; }
-        
-        public EffectiveWorkTimePolicy getPolicy() { return policy; }
-        public void setPolicy(EffectiveWorkTimePolicy policy) { this.policy = policy; }
+
+        public String getPluginId() {
+            return pluginId;
+        }
+
+        public void setPluginId(String pluginId) {
+            this.pluginId = pluginId;
+        }
+
+        public long getTimestamp() {
+            return timestamp;
+        }
+
+        public void setTimestamp(long timestamp) {
+            this.timestamp = timestamp;
+        }
+
+        public EffectiveWorkTimePolicy getPolicy() {
+            return policy;
+        }
+
+        public void setPolicy(EffectiveWorkTimePolicy policy) {
+            this.policy = policy;
+        }
     }
 }

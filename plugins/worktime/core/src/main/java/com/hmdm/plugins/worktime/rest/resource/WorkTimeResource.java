@@ -15,6 +15,8 @@ import com.hmdm.persistence.UserDAO;
 import com.hmdm.persistence.DeviceDAO;
 import com.hmdm.persistence.domain.User;
 import com.hmdm.persistence.domain.Device;
+import com.hmdm.notification.PushService;
+import com.hmdm.notification.persistence.domain.PushMessage;
 import com.hmdm.rest.json.Response;
 import com.hmdm.security.SecurityContext;
 import org.slf4j.Logger;
@@ -29,12 +31,14 @@ public class WorkTimeResource {
     private final WorkTimeDAO workTimeDAO;
     private final UserDAO userDAO;
     private final DeviceDAO deviceDAO;
+    private final PushService pushService;
 
     @Inject
-    public WorkTimeResource(WorkTimeDAO workTimeDAO, UserDAO userDAO, DeviceDAO deviceDAO) {
+    public WorkTimeResource(WorkTimeDAO workTimeDAO, UserDAO userDAO, DeviceDAO deviceDAO, PushService pushService) {
         this.workTimeDAO = workTimeDAO;
         this.userDAO = userDAO;
         this.deviceDAO = deviceDAO;
+        this.pushService = pushService;
     }
 
     private int getCustomerId() {
@@ -70,7 +74,7 @@ public class WorkTimeResource {
             log.error("Unauthorized attempt to save worktime policy - not authenticated");
             return Response.PERMISSION_DENIED();
         }
-        
+
         if (!SecurityContext.get().isSuperAdmin() && !this.userDAO.isOrgAdmin(current)) {
             log.warn("User {} is not allowed to save policy: must be admin", current.getLogin());
             return Response.PERMISSION_DENIED();
@@ -79,6 +83,13 @@ public class WorkTimeResource {
         int customerId = getCustomerId();
         policy.setCustomerId(customerId);
         workTimeDAO.saveGlobalPolicy(policy);
+
+        // Notify all devices about policy update
+        List<Device> devices = deviceDAO.getAllDevices();
+        for (Device device : devices) {
+            pushService.sendSimpleMessage(device.getId(), PushMessage.TYPE_CONFIG_UPDATED);
+        }
+
         return Response.OK(policy);
     }
 
@@ -91,20 +102,20 @@ public class WorkTimeResource {
             log.error("Unauthorized attempt to access device overrides - not authenticated");
             return Response.PERMISSION_DENIED();
         }
-        
+
         if (!SecurityContext.get().isSuperAdmin() && !this.userDAO.isOrgAdmin(current)) {
             log.warn("User {} is not allowed to list overrides: must be admin", current.getLogin());
             return Response.PERMISSION_DENIED();
         }
 
         int customerId = getCustomerId();
-        
+
         // Get all devices in the current customer's scope
         List<Device> allDevices = deviceDAO.getAllDevices();
-        
+
         // Get overrides for those devices
         List<WorkTimeDeviceOverride> overrides = workTimeDAO.getDeviceOverrides(customerId);
-        
+
         // Combine devices with their overrides
         List<WorkTimeDeviceOverride> result = new java.util.ArrayList<>();
         DateTimeFormatter dateFmt = DateTimeFormatter.ISO_LOCAL_DATE;
@@ -115,7 +126,7 @@ public class WorkTimeResource {
                     .filter(o -> o.getDeviceId() == device.getId())
                     .findFirst()
                     .orElse(null);
-            
+
             if (override == null) {
                 // Create a default override (no exceptions, enabled)
                 override = new WorkTimeDeviceOverride();
@@ -150,7 +161,7 @@ public class WorkTimeResource {
             }
             result.add(override);
         }
-        
+
         return Response.OK(result);
     }
 
@@ -161,7 +172,7 @@ public class WorkTimeResource {
         // Check permissions
         User current = SecurityContext.get().getCurrentUser().orElse(null);
         if (current == null) {
-             return Response.PERMISSION_DENIED();
+            return Response.PERMISSION_DENIED();
         }
         if (!SecurityContext.get().isSuperAdmin() && !this.userDAO.isOrgAdmin(current)) {
             return Response.PERMISSION_DENIED();
@@ -169,13 +180,17 @@ public class WorkTimeResource {
 
         int customerId = getCustomerId();
         override.setCustomerId(customerId);
-        
+
         // Validation needs to be updated to check deviceId instead of userId
         if (override.getDeviceId() <= 0) {
-             return Response.ERROR("Invalid device ID");
+            return Response.ERROR("Invalid device ID");
         }
 
         workTimeDAO.saveDeviceOverride(override);
+
+        // Notify device about policy update
+        pushService.sendSimpleMessage(override.getDeviceId(), PushMessage.TYPE_CONFIG_UPDATED);
+
         return Response.OK(override);
     }
 
@@ -192,6 +207,10 @@ public class WorkTimeResource {
 
         int customerId = getCustomerId();
         workTimeDAO.deleteDeviceOverride(customerId, deviceId);
+
+        // Notify device about policy update
+        pushService.sendSimpleMessage(deviceId, PushMessage.TYPE_CONFIG_UPDATED);
+
         return Response.OK();
     }
 }
