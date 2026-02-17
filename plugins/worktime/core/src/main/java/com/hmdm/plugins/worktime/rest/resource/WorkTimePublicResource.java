@@ -54,6 +54,10 @@ public class WorkTimePublicResource {
         throw new WebApplicationException("CustomerId required", 400);
     }
 
+    private boolean isAuthenticated() {
+        return SecurityContext.get().getCurrentUser().isPresent();
+    }
+
     // ==================================================================================
     // User-based endpoints (for admin panel or when userId is known)
     // ==================================================================================
@@ -67,6 +71,9 @@ public class WorkTimePublicResource {
     public Response getEffectivePolicy(
             @PathParam("userId") @ApiParam("User ID") int userId, 
             @QueryParam("customerId") @ApiParam("Customer ID (required if not authenticated)") Integer customerId) {
+        if (!isAuthenticated()) {
+            return Response.PERMISSION_DENIED();
+        }
         try {
             int cid = resolveCustomerId(customerId);
             EffectiveWorkTimePolicy p = workTimeService.resolveEffectivePolicy(cid, userId, LocalDateTime.now());
@@ -87,6 +94,9 @@ public class WorkTimePublicResource {
             @QueryParam("userId") @ApiParam("User ID") Integer userId,
             @QueryParam("pkg") @ApiParam("App package name") String pkg,
             @QueryParam("customerId") @ApiParam("Customer ID") Integer customerId) {
+        if (!isAuthenticated()) {
+            return Response.PERMISSION_DENIED();
+        }
         if (userId == null || pkg == null || pkg.trim().isEmpty()) {
             return Response.ERROR("userId and pkg query params required");
         }

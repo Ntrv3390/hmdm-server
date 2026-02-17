@@ -304,9 +304,31 @@ angular
 
     var parseLocalDate = function(value) {
       if (!value) return null;
-      var d = new Date(value);
+      var s = String(value);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+        var parts = s.split('-');
+        var y = parseInt(parts[0], 10);
+        var m = parseInt(parts[1], 10) - 1;
+        var dNum = parseInt(parts[2], 10);
+        var localDate = new Date(y, m, dNum, 0, 0, 0, 0);
+        if (!isNaN(localDate.getTime())) {
+          return localDate;
+        }
+      }
+      var d = new Date(s);
       if (!isNaN(d.getTime())) return d;
       return null;
+    };
+
+    var toLocalDateTimeString = function(dateValue) {
+      if (!dateValue || isNaN(dateValue.getTime())) return null;
+      var yyyy = dateValue.getFullYear();
+      var mm = ('0' + (dateValue.getMonth() + 1)).slice(-2);
+      var dd = ('0' + dateValue.getDate()).slice(-2);
+      var hh = ('0' + dateValue.getHours()).slice(-2);
+      var mi = ('0' + dateValue.getMinutes()).slice(-2);
+      var ss = ('0' + dateValue.getSeconds()).slice(-2);
+      return yyyy + '-' + mm + '-' + dd + 'T' + hh + ':' + mi + ':' + ss;
     };
 
     var combineDateTime = function(dateValue, timeValue) {
@@ -458,8 +480,8 @@ angular
       var override = {
         deviceId: $scope.editingDevice.deviceId,
         enabled: false,
-        startDateTime: startDateTime.toISOString(),
-        endDateTime: endDateTime.toISOString()
+        startDateTime: toLocalDateTimeString(startDateTime),
+        endDateTime: toLocalDateTimeString(endDateTime)
       };
 
       WorkTimeDevice.save({ deviceId: $scope.editingDevice.deviceId }, override, function(response) {

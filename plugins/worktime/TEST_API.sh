@@ -11,10 +11,10 @@
 # - At least one device enrolled
 #
 # Usage:
-#   ./TEST_API.sh [BASE_URL] [USERNAME] [PASSWORD]
+#   ./TEST_API.sh [BASE_URL] [USERNAME] [PASSWORD] [DEVICE_NUMBER] [DEVICE_ID]
 #
 # Example:
-#   ./TEST_API.sh http://localhost:8080 admin admin
+#   ./TEST_API.sh http://localhost:8080 admin admin TESTDEVICE001 1
 ##############################################################################
 
 # Configuration
@@ -22,6 +22,7 @@ BASE_URL="${1:-http://localhost:8080}"
 USERNAME="${2:-admin}"
 PASSWORD="${3:-admin}"
 DEVICE_NUMBER="${4:-TESTDEVICE001}"
+DEVICE_ID="${5:-1}"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -39,6 +40,7 @@ echo "=========================================="
 echo "Base URL: $BASE_URL"
 echo "Username: $USERNAME"
 echo "Device: $DEVICE_NUMBER"
+echo "Device ID: $DEVICE_ID"
 echo "=========================================="
 echo ""
 
@@ -119,50 +121,52 @@ test_endpoint \
     "$policy_data" \
     "200"
 
-# Test 3: List user overrides
+# Test 3: List device overrides
 test_endpoint \
-    "List User Overrides" \
+    "List Device Overrides" \
     "GET" \
-    "/rest/plugins/worktime/private/users" \
+    "/rest/plugins/worktime/private/devices" \
     "" \
     "*"
 
-# Test 4: Create user override
-user_override='{
-    "userId": 1,
+# Test 4: Create device exception override
+device_override='{ 
+    "deviceId": 1,
     "enabled": false,
-    "startDateTime": "2026-02-09T00:00:00",
-    "endDateTime": "2026-02-10T23:59:59"
+    "startDateTime": "2030-02-09T09:00:00",
+    "endDateTime": "2030-02-10T18:00:00"
 }'
 
+device_override="${device_override/\"deviceId\": 1/\"deviceId\": $DEVICE_ID}"
+
 test_endpoint \
-    "Create User Override" \
+    "Create Device Exception" \
     "POST" \
-    "/rest/plugins/worktime/private/users" \
-    "$user_override" \
+    "/rest/plugins/worktime/private/device" \
+    "$device_override" \
     "*"
 
-# Test 5: Get user override
+# Test 5: List device overrides (after save)
 test_endpoint \
-    "Get User Override" \
+    "List Device Overrides After Save" \
     "GET" \
-    "/rest/plugins/worktime/private/users/1" \
+    "/rest/plugins/worktime/private/devices" \
     "" \
     "*"
 
-# Test 6: Check if app allowed (user-based)
+# Test 6: Delete device override
 test_endpoint \
-    "Check App Allowed (User API)" \
-    "GET" \
-    "/rest/plugins/worktime/private/users/1/allowed?pkg=com.android.chrome" \
+    "Delete Device Override" \
+    "DELETE" \
+    "/rest/plugins/worktime/private/device/$DEVICE_ID" \
     "" \
     "*"
 
-# Test 7: Get user status
+# Test 7: List device overrides (after delete)
 test_endpoint \
-    "Get User Status" \
+    "List Device Overrides After Delete" \
     "GET" \
-    "/rest/plugins/worktime/private/users/1/status" \
+    "/rest/plugins/worktime/private/devices" \
     "" \
     "*"
 
@@ -211,16 +215,16 @@ test_endpoint \
 # Test 12: Check app without package parameter
 test_endpoint \
     "Missing Package Parameter" \
-    "GET" \
-    "/rest/plugins/worktime/private/users/1/allowed" \
+    "GET_PUBLIC" \
+    "/rest/plugins/worktime/public/device/$DEVICE_NUMBER/allowed" \
     "" \
     "*"
 
-# Test 13: Delete user override
+# Test 13: Delete non-existing device override
 test_endpoint \
-    "Delete User Override" \
+    "Delete Non-existing Device Override" \
     "DELETE" \
-    "/rest/plugins/worktime/private/users/1" \
+    "/rest/plugins/worktime/private/device/999999" \
     "" \
     "*"
 

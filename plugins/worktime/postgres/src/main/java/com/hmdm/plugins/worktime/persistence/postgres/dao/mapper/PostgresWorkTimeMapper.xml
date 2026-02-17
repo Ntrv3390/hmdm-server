@@ -26,7 +26,6 @@
 
     <insert id="insertGlobalPolicy">
         INSERT INTO worktime_global_policy (
-            id,
             start_time,
             end_time,
             days_of_week,
@@ -35,7 +34,6 @@
             enabled,
             customer_id
         ) VALUES (
-            1,
             #{startTime},
             #{endTime},
             #{daysOfWeek},
@@ -55,8 +53,7 @@
             allowed_apps_during_work = #{allowedAppsDuringWork},
             allowed_apps_outside_work = #{allowedAppsOutsideWork},
             enabled = #{enabled}
-        WHERE id = 1
-          AND customer_id = #{customerId}
+                WHERE customer_id = #{customerId}
     </update>
 
     <!-- ========================================================= -->

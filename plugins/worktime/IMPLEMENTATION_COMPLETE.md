@@ -15,9 +15,9 @@
 - App whitelists (during work / outside work)
 - Enable/disable enforcement toggle
 
-✅ **Per-User/Device Override System**
+✅ **Per-Device Override System**
 - Exception-based overrides (temporary disable)
-- Policy-based overrides (custom rules per user/device)
+- Policy-based overrides (custom rules per device)
 - Automatic expiration & cleanup
 - Priority-based resolution
 
@@ -82,7 +82,7 @@ plugins/worktime/
     ├── views/
     │   ├── worktime_policies.html
     │   ├── worktime_policy.html
-    │   └── worktime_users.html
+    │   └── worktime_devices.html
     └── i18n/
         ├── en_US.json
         └── ru_RU.json
@@ -92,7 +92,7 @@ plugins/worktime/
 ```sql
 worktime_global_policy      -- Customer-level policy
 worktime_global_override    -- Temporary global disables
-worktime_user_override      -- Per-user/device exceptions & custom policies
+worktime_device_override    -- Per-device exceptions & custom policies
 ```
 
 ### Documentation (1,150+ lines):
@@ -110,12 +110,9 @@ worktime_user_override      -- Per-user/device exceptions & custom policies
 ```
 GET    /rest/plugins/worktime/private/policy                    # Get global policy
 POST   /rest/plugins/worktime/private/policy                    # Save global policy
-GET    /rest/plugins/worktime/private/users                     # List user overrides
-GET    /rest/plugins/worktime/private/users/{userId}            # Get user override
-POST   /rest/plugins/worktime/private/users                     # Create/update override
-DELETE /rest/plugins/worktime/private/users/{userId}            # Delete override
-GET    /rest/plugins/worktime/private/users/{userId}/allowed    # Check app permission
-GET    /rest/plugins/worktime/private/users/{userId}/status     # Get status
+GET    /rest/plugins/worktime/private/devices                   # List device overrides
+POST   /rest/plugins/worktime/private/device                    # Create/update device override
+DELETE /rest/plugins/worktime/private/device/{id}               # Delete device override
 ```
 
 ### Device APIs (Public - No Auth):

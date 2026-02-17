@@ -23,7 +23,7 @@ angular.module('plugin-calllog', ['ngResource', 'ui.bootstrap', 'ui.router', 'ng
             }
         });
     })
-    .controller('PluginCallLogSettingsController', function ($scope, $rootScope, pluginCallLogService, alertService) {
+    .controller('PluginCallLogSettingsController', function ($scope, $rootScope, pluginCallLogService, alertService, localization) {
         $scope.loading = true;
         $scope.settings = {
             enabled: true,

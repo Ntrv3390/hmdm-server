@@ -308,4 +308,34 @@
             );
         </sql>
     </changeSet>
+
+    <changeSet id="worktime-global-policy-unique-customer-2026-02-17" author="worktime-plugin">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="worktime_global_policy"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*)
+                FROM information_schema.table_constraints
+                WHERE table_name = 'worktime_global_policy'
+                  AND constraint_name = 'uk_worktime_global_policy_customer'
+                  AND constraint_type = 'UNIQUE'
+            </sqlCheck>
+        </preConditions>
+        <addUniqueConstraint tableName="worktime_global_policy"
+                             columnNames="customer_id"
+                             constraintName="uk_worktime_global_policy_customer"/>
+    </changeSet>
+
+    <changeSet id="worktime-global-policy-customer-index-2026-02-17" author="worktime-plugin">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="worktime_global_policy"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM pg_indexes
+                WHERE tablename = 'worktime_global_policy'
+                  AND indexname = 'idx_worktime_global_policy_customer'
+            </sqlCheck>
+        </preConditions>
+        <createIndex indexName="idx_worktime_global_policy_customer" tableName="worktime_global_policy">
+            <column name="customer_id"/>
+        </createIndex>
+    </changeSet>
 </databaseChangeLog>

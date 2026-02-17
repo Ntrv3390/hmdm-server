@@ -56,7 +56,7 @@ public interface CallLogMapper {
 
     @Delete("DELETE FROM plugin_calllog_data " +
             "WHERE customerid = #{customerId} " +
-            "AND createtime < EXTRACT(EPOCH FROM (NOW() - INTERVAL '#{retentionDays} days')) * 1000")
+            "AND createtime < EXTRACT(EPOCH FROM (NOW() - make_interval(days => #{retentionDays}))) * 1000")
     int deleteOldCallLogs(@Param("customerId") int customerId, @Param("retentionDays") int retentionDays);
 
     @Delete("DELETE FROM plugin_calllog_data " +

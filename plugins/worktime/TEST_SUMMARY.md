@@ -14,7 +14,7 @@
 ### Components Verified:
 - ✅ **Compilation**: 22 Java files, 0 errors
 - ✅ **Database**: 3 tables, proper migrations
-- ✅ **REST APIs**: 11 endpoints (8 admin + 3 public)
+- ✅ **REST APIs**: 8 endpoints (5 admin + 3 public)
 - ✅ **Device Sync**: Auto-injection hook implemented
 - ✅ **Background Tasks**: Hourly cleanup task configured
 - ✅ **Web UI**: 1,318 lines (AngularJS + HTML)

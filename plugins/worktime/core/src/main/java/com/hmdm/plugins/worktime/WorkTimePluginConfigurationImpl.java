@@ -58,6 +58,19 @@ public class WorkTimePluginConfigurationImpl implements PluginConfiguration {
 
     @Override
     public Optional<List<Class<? extends PluginTaskModule>>> getTaskModules(ServletContext context) {
-        return Optional.empty();
+        try {
+            List<Class<? extends PluginTaskModule>> modules = new ArrayList<>();
+
+            final String configClass = context.getInitParameter("plugin.worktime.persistence.config.class");
+            if (configClass != null && !configClass.trim().isEmpty()) {
+                WorkTimePersistenceConfiguration config = (WorkTimePersistenceConfiguration) Class.forName(configClass)
+                        .newInstance();
+                config.getTaskModules(context).ifPresent(modules::addAll);
+            }
+
+            return Optional.of(modules);
+        } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+            throw new IllegalArgumentException("Could not get list of task modules for WorkTime plugin", e);
+        }
     }
 }

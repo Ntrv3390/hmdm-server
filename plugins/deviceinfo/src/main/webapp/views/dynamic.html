@@ -264,6 +264,11 @@
              <button class="btn btn-info" ng-click="refreshLocation()">
                 <span class="glyphicon glyphicon-refresh"></span> Get Latest GPS Location
             </button>
+            <div class="margin-top-10" ng-if="refreshState.lastRequestedAt">
+                <small class="text-muted">Last refresh request: {{refreshState.lastRequestedAt | date:'dd.MM.yy HH:mm:ss'}}</small>
+                <br ng-if="refreshState.waitingForNewData"/>
+                <small class="text-warning" ng-if="refreshState.waitingForNewData">Waiting for updated GPS data from device...</small>
+            </div>
         </div>
     </div>
 

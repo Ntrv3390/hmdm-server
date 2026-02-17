@@ -4,7 +4,9 @@ import javax.inject.Inject;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 
@@ -48,6 +50,33 @@ public class WorkTimeResource {
                 .getCustomerId();
     }
 
+    private boolean isValidTime(String value) {
+        if (value == null) {
+            return false;
+        }
+        try {
+            LocalTime.parse(value, DateTimeFormatter.ofPattern("HH:mm"));
+            return true;
+        } catch (DateTimeParseException e) {
+            return false;
+        }
+    }
+
+    private void normalizeGlobalPolicy(WorkTimePolicy policy) {
+        if (policy.getDaysOfWeek() == null) {
+            policy.setDaysOfWeek(127);
+        }
+        if (policy.getAllowedAppsDuringWork() == null) {
+            policy.setAllowedAppsDuringWork("");
+        }
+        if (policy.getAllowedAppsOutsideWork() == null) {
+            policy.setAllowedAppsOutsideWork("*");
+        }
+        if (policy.getEnabled() == null) {
+            policy.setEnabled(true);
+        }
+    }
+
     // --- Global policy endpoints ---
     @GET
     @Path("/policy")
@@ -80,8 +109,19 @@ public class WorkTimeResource {
             return Response.PERMISSION_DENIED();
         }
 
+        if (policy == null) {
+            return Response.ERROR("Policy payload is required");
+        }
+        if (!isValidTime(policy.getStartTime()) || !isValidTime(policy.getEndTime())) {
+            return Response.ERROR("Invalid time format, expected HH:mm");
+        }
+        if (policy.getDaysOfWeek() != null && (policy.getDaysOfWeek() < 0 || policy.getDaysOfWeek() > 127)) {
+            return Response.ERROR("Invalid daysOfWeek bitmask");
+        }
+
         int customerId = getCustomerId();
         policy.setCustomerId(customerId);
+        normalizeGlobalPolicy(policy);
         workTimeDAO.saveGlobalPolicy(policy);
 
         // Notify all devices about policy update
@@ -178,12 +218,36 @@ public class WorkTimeResource {
             return Response.PERMISSION_DENIED();
         }
 
+        if (override == null) {
+            return Response.ERROR("Override payload is required");
+        }
+
         int customerId = getCustomerId();
         override.setCustomerId(customerId);
 
         // Validation needs to be updated to check deviceId instead of userId
         if (override.getDeviceId() <= 0) {
             return Response.ERROR("Invalid device ID");
+        }
+
+        if (!override.isEnabled()) {
+            if (override.getStartDateTime() == null || override.getEndDateTime() == null) {
+                return Response.ERROR("Disabled override requires startDateTime and endDateTime");
+            }
+            if (!override.getEndDateTime().after(override.getStartDateTime())) {
+                return Response.ERROR("endDateTime must be after startDateTime");
+            }
+        } else {
+            if (override.getStartTime() != null && !override.getStartTime().trim().isEmpty() && !isValidTime(override.getStartTime())) {
+                return Response.ERROR("Invalid startTime format, expected HH:mm");
+            }
+            if (override.getEndTime() != null && !override.getEndTime().trim().isEmpty() && !isValidTime(override.getEndTime())) {
+                return Response.ERROR("Invalid endTime format, expected HH:mm");
+            }
+        }
+
+        if (override.getPriority() == null) {
+            override.setPriority(0);
         }
 
         workTimeDAO.saveDeviceOverride(override);
