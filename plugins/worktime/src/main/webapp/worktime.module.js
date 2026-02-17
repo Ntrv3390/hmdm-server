@@ -66,7 +66,7 @@ angular
   })
   .controller(
     "WorkTimePoliciesController",
-    function ($scope, $timeout, WorkTimePolicy, WorkTimeApplications, localization) {
+    function ($scope, $timeout, WorkTimePolicy, WorkTimeApplications, WorkTimeDevice, localization) {
       $scope.policy = null;
       $scope.error = null;
       $scope.success = null;
@@ -76,6 +76,8 @@ angular
       $scope.selectedAppsOutsideWork = {};
       $scope.duringWorkSearchText = '';
       $scope.outsideWorkSearchText = '';
+      $scope.activeExceptionsCount = 0;
+      $scope.hasActiveExceptions = false;
 
       $scope.days = [
         { id: 1, label: "Mon" },
@@ -221,6 +223,65 @@ angular
         return count > 0 ? count : 'None';
       };
 
+      $scope.loadActiveExceptionsStatus = function () {
+        WorkTimeDevice.list(
+          function (response) {
+            var devices = angular.isArray(response) ? response : [];
+            var now = new Date();
+            var activeCount = 0;
+
+            devices.forEach(function (device) {
+              var hasActive = false;
+
+              if (device.startDateTime && device.endDateTime) {
+                var start = new Date(device.startDateTime);
+                var end = new Date(device.endDateTime);
+                if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && now >= start && now <= end) {
+                  hasActive = true;
+                }
+              }
+
+              if (!hasActive && device.exceptions && device.exceptions.length > 0) {
+                hasActive = device.exceptions.some(function (exc) {
+                  var dateFrom = exc.dateFrom ? new Date(exc.dateFrom) : null;
+                  var dateTo = exc.dateTo ? new Date(exc.dateTo) : null;
+                  if (!dateFrom || !dateTo || isNaN(dateFrom.getTime()) || isNaN(dateTo.getTime())) {
+                    return !!exc.active;
+                  }
+
+                  if (exc.timeFrom && typeof exc.timeFrom === 'string') {
+                    var fromParts = exc.timeFrom.split(':');
+                    if (fromParts.length >= 2) {
+                      dateFrom.setHours(parseInt(fromParts[0], 10) || 0, parseInt(fromParts[1], 10) || 0, 0, 0);
+                    }
+                  }
+
+                  if (exc.timeTo && typeof exc.timeTo === 'string') {
+                    var toParts = exc.timeTo.split(':');
+                    if (toParts.length >= 2) {
+                      dateTo.setHours(parseInt(toParts[0], 10) || 0, parseInt(toParts[1], 10) || 0, 59, 999);
+                    }
+                  }
+
+                  return now >= dateFrom && now <= dateTo;
+                });
+              }
+
+              if (hasActive) {
+                activeCount++;
+              }
+            });
+
+            $scope.activeExceptionsCount = activeCount;
+            $scope.hasActiveExceptions = activeCount > 0;
+          },
+          function () {
+            $scope.activeExceptionsCount = 0;
+            $scope.hasActiveExceptions = false;
+          }
+        );
+      };
+
       $scope.refresh = function () {
         WorkTimePolicy.get(
           function (response) {
@@ -246,6 +307,7 @@ angular
             // Parse the apps string into selected apps
             $scope.selectedAppsDuringWork = $scope.parseAppsString($scope.policy.allowedAppsDuringWork);
             $scope.selectedAppsOutsideWork = $scope.parseAppsString($scope.policy.allowedAppsOutsideWork);
+            $scope.loadActiveExceptionsStatus();
           },
           function () {
             $scope.error = localization.localize("error.request.failure");
@@ -272,6 +334,7 @@ angular
               
               // Show success message
               $scope.success = "Work Time Policy saved successfully!";
+              $scope.loadActiveExceptionsStatus();
               
               // Auto-hide success message after 3 seconds
               $timeout(function() {
@@ -404,6 +467,23 @@ angular
           device.exceptions.forEach(function(exc) {
             exc.dateFrom = parseLocalDate(exc.dateFrom);
             exc.dateTo = parseLocalDate(exc.dateTo);
+            if (exc.dateFrom && exc.dateTo) {
+              var from = new Date(exc.dateFrom);
+              var to = new Date(exc.dateTo);
+              if (exc.timeFrom && typeof exc.timeFrom === 'string') {
+                var fromParts = exc.timeFrom.split(':');
+                if (fromParts.length >= 2) {
+                  from.setHours(parseInt(fromParts[0], 10) || 0, parseInt(fromParts[1], 10) || 0, 0, 0);
+                }
+              }
+              if (exc.timeTo && typeof exc.timeTo === 'string') {
+                var toParts = exc.timeTo.split(':');
+                if (toParts.length >= 2) {
+                  to.setHours(parseInt(toParts[0], 10) || 0, parseInt(toParts[1], 10) || 0, 59, 999);
+                }
+              }
+              exc.active = (new Date() >= from && new Date() <= to);
+            }
           });
           if (device.exceptions.length === 0 && device.enabled === false) {
             var fallback = buildExceptionFromRange(device);
@@ -412,6 +492,7 @@ angular
             }
           }
           var hasActive = isActiveException(device);
+          device.hasActiveException = hasActive;
           if (hasScheduledException(device)) {
             device.toggleOn = false;
           } else {
