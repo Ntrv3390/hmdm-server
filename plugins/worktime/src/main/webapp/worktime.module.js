@@ -394,9 +394,64 @@ angular
       return yyyy + '-' + mm + '-' + dd + 'T' + hh + ':' + mi + ':' + ss;
     };
 
+    var toDatePart = function(dateValue) {
+      var d = parseLocalDate(dateValue);
+      if (isNaN(d.getTime())) return null;
+      var yyyy = d.getFullYear();
+      var mm = ('0' + (d.getMonth() + 1)).slice(-2);
+      var dd = ('0' + d.getDate()).slice(-2);
+      return yyyy + '-' + mm + '-' + dd;
+    };
+
+    var toLocalDayDate = function(dateValue) {
+      var parsed = parseLocalDate(dateValue);
+      if (!parsed || isNaN(parsed.getTime())) return null;
+      return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate(), 0, 0, 0, 0);
+    };
+
+    var toTimePart = function(timeValue) {
+      if (!timeValue) return null;
+      if (angular.isDate(timeValue) && !isNaN(timeValue.getTime())) {
+        return ('0' + timeValue.getHours()).slice(-2) + ':' + ('0' + timeValue.getMinutes()).slice(-2);
+      }
+      if (typeof timeValue === 'string') {
+        var parts = timeValue.split(':');
+        if (parts.length >= 2) {
+          return ('0' + (parseInt(parts[0], 10) || 0)).slice(-2) + ':' + ('0' + (parseInt(parts[1], 10) || 0)).slice(-2);
+        }
+      }
+      return null;
+    };
+
+    var toApiDateTimeString = function(dateValue, timeValue) {
+      var datePart = toDatePart(dateValue);
+      var timePart = toTimePart(timeValue);
+      if (!datePart || !timePart) return null;
+      return datePart + 'T' + timePart + ':00';
+    };
+
+    var isEndDateTimeInFuture = function(dateValue, timeValue) {
+      var endDatePart = toDatePart(dateValue);
+      var endTimePart = toTimePart(timeValue);
+      if (!endDatePart || !endTimePart) return false;
+
+      var now = new Date();
+      var nowDatePart =
+        now.getFullYear() + '-' +
+        ('0' + (now.getMonth() + 1)).slice(-2) + '-' +
+        ('0' + now.getDate()).slice(-2);
+      var nowTimePart =
+        ('0' + now.getHours()).slice(-2) + ':' +
+        ('0' + now.getMinutes()).slice(-2);
+
+      if (endDatePart > nowDatePart) return true;
+      if (endDatePart < nowDatePart) return false;
+      return endTimePart > nowTimePart;
+    };
+
     var combineDateTime = function(dateValue, timeValue) {
       if (!dateValue || !timeValue) return null;
-      var d = new Date(dateValue);
+      var d = toLocalDayDate(dateValue);
       if (isNaN(d.getTime())) return null;
       var hours;
       var minutes;
@@ -414,6 +469,50 @@ angular
       return d;
     };
 
+    var parseTimeToDate = function(timeValue) {
+      if (!timeValue) return null;
+      if (angular.isDate(timeValue) && !isNaN(timeValue.getTime())) {
+        return timeValue;
+      }
+      if (typeof timeValue === 'string') {
+        var parts = timeValue.split(':');
+        if (parts.length >= 2) {
+          var parsed = new Date();
+          parsed.setHours(parseInt(parts[0], 10) || 0, parseInt(parts[1], 10) || 0, 0, 0);
+          return parsed;
+        }
+      }
+      return null;
+    };
+
+    var getExceptionRange = function(exc) {
+      if (!exc) return null;
+      var dateFrom = exc.dateFrom ? parseLocalDate(exc.dateFrom) : null;
+      var dateTo = exc.dateTo ? parseLocalDate(exc.dateTo) : null;
+      if (!dateFrom || !dateTo || isNaN(dateFrom.getTime()) || isNaN(dateTo.getTime())) {
+        return null;
+      }
+
+      var from = new Date(dateFrom);
+      var to = new Date(dateTo);
+
+      if (exc.timeFrom && typeof exc.timeFrom === 'string') {
+        var fromParts = exc.timeFrom.split(':');
+        if (fromParts.length >= 2) {
+          from.setHours(parseInt(fromParts[0], 10) || 0, parseInt(fromParts[1], 10) || 0, 0, 0);
+        }
+      }
+
+      if (exc.timeTo && typeof exc.timeTo === 'string') {
+        var toParts = exc.timeTo.split(':');
+        if (toParts.length >= 2) {
+          to.setHours(parseInt(toParts[0], 10) || 0, parseInt(toParts[1], 10) || 0, 59, 999);
+        }
+      }
+
+      return { from: from, to: to };
+    };
+
     // Load global policy
     $scope.loadGlobalPolicy = function() {
       WorkTimePolicy.get(function(response) {
@@ -429,6 +528,7 @@ angular
       var start = new Date(device.startDateTime);
       var end = new Date(device.endDateTime);
       if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
+      if (new Date() > end) return null;
       return {
         dateFrom: start,
         dateTo: end,
@@ -442,15 +542,24 @@ angular
       return device && device.startDateTime && device.endDateTime;
     };
 
-    var isActiveException = function(device) {
+    var isActiveException = function(device, now) {
+      var current = now || new Date();
       if (device.exceptions && device.exceptions.length > 0) {
-        return device.exceptions.some(function(exc) { return exc.active; });
+        return device.exceptions.some(function(exc) {
+          var range = getExceptionRange(exc);
+          if (!range) {
+            return !!exc.active;
+          }
+          var active = current >= range.from && current <= range.to;
+          exc.active = active;
+          return active;
+        });
       }
       if (hasScheduledException(device)) {
         var start = new Date(device.startDateTime);
         var end = new Date(device.endDateTime);
         if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
-          return new Date() >= start && new Date() <= end;
+          return current >= start && current <= end;
         }
       }
       return false;
@@ -459,31 +568,21 @@ angular
     // Load devices list
     $scope.loadDevices = function() {
       WorkTimeDevice.list(function(response) {
+        var now = new Date();
         $scope.devices = angular.isArray(response) ? response : [];
         $scope.devices.forEach(function(device) {
           if (!device.exceptions) {
             device.exceptions = [];
           }
-          device.exceptions.forEach(function(exc) {
-            exc.dateFrom = parseLocalDate(exc.dateFrom);
-            exc.dateTo = parseLocalDate(exc.dateTo);
-            if (exc.dateFrom && exc.dateTo) {
-              var from = new Date(exc.dateFrom);
-              var to = new Date(exc.dateTo);
-              if (exc.timeFrom && typeof exc.timeFrom === 'string') {
-                var fromParts = exc.timeFrom.split(':');
-                if (fromParts.length >= 2) {
-                  from.setHours(parseInt(fromParts[0], 10) || 0, parseInt(fromParts[1], 10) || 0, 0, 0);
-                }
-              }
-              if (exc.timeTo && typeof exc.timeTo === 'string') {
-                var toParts = exc.timeTo.split(':');
-                if (toParts.length >= 2) {
-                  to.setHours(parseInt(toParts[0], 10) || 0, parseInt(toParts[1], 10) || 0, 59, 999);
-                }
-              }
-              exc.active = (new Date() >= from && new Date() <= to);
+          device.exceptions = device.exceptions.filter(function(exc) {
+            var range = getExceptionRange(exc);
+            if (!range) {
+              return true;
             }
+            exc.dateFrom = range.from;
+            exc.dateTo = range.to;
+            exc.active = (now >= range.from && now <= range.to);
+            return now <= range.to;
           });
           if (device.exceptions.length === 0 && device.enabled === false) {
             var fallback = buildExceptionFromRange(device);
@@ -491,7 +590,15 @@ angular
               device.exceptions.push(fallback);
             }
           }
-          var hasActive = isActiveException(device);
+          var hasActive = (device.exceptions || []).some(function(exc) {
+            var range = getExceptionRange(exc);
+            if (!range) {
+              return !!exc.active;
+            }
+            var active = now >= range.from && now <= range.to;
+            exc.active = active;
+            return active;
+          });
           device.hasActiveException = hasActive;
           if (hasScheduledException(device)) {
             device.toggleOn = false;
@@ -528,6 +635,8 @@ angular
         timeFrom: '09:00',
         timeTo: '18:00'
       };
+      $scope.editingException.timeFromInput = parseTimeToDate($scope.editingException.timeFrom) || parseTimeToDate('09:00');
+      $scope.editingException.timeToInput = parseTimeToDate($scope.editingException.timeTo) || parseTimeToDate('18:00');
       $scope.openExceptionModal();
     };
 
@@ -536,6 +645,8 @@ angular
       if (!$scope.canEdit || !$scope.globalPolicy.enabled) return;
       $scope.editingDevice = device;
       $scope.editingException = angular.copy(device.exceptions[0]) || {};
+      $scope.editingException.timeFromInput = parseTimeToDate($scope.editingException.timeFrom);
+      $scope.editingException.timeToInput = parseTimeToDate($scope.editingException.timeTo);
       $scope.openExceptionModal();
     };
 
@@ -543,8 +654,8 @@ angular
     $scope.saveException = function() {
       if (!$scope.editingDevice || !$scope.editingException) return;
 
-      var startDateTime = combineDateTime($scope.editingException.dateFrom, $scope.editingException.timeFrom);
-      var endDateTime = combineDateTime($scope.editingException.dateTo, $scope.editingException.timeTo);
+      var startDateTime = combineDateTime($scope.editingException.dateFrom, $scope.editingException.timeFromInput || $scope.editingException.timeFrom);
+      var endDateTime = combineDateTime($scope.editingException.dateTo, $scope.editingException.timeToInput || $scope.editingException.timeTo);
       if (!startDateTime || !endDateTime) {
         $scope.error = 'Start and end date/time are required';
         return;
@@ -553,7 +664,7 @@ angular
         $scope.error = 'End time must be after start time';
         return;
       }
-      if (endDateTime < new Date()) {
+      if (!isEndDateTimeInFuture($scope.editingException.dateTo, $scope.editingException.timeToInput || $scope.editingException.timeTo)) {
         $scope.error = 'End time must be in the future';
         return;
       }
@@ -561,9 +672,14 @@ angular
       var override = {
         deviceId: $scope.editingDevice.deviceId,
         enabled: false,
-        startDateTime: toLocalDateTimeString(startDateTime),
-        endDateTime: toLocalDateTimeString(endDateTime)
+        startDateTime: toApiDateTimeString($scope.editingException.dateFrom, $scope.editingException.timeFromInput || $scope.editingException.timeFrom),
+        endDateTime: toApiDateTimeString($scope.editingException.dateTo, $scope.editingException.timeToInput || $scope.editingException.timeTo)
       };
+
+      if (!override.startDateTime || !override.endDateTime) {
+        $scope.error = 'Start and end date/time are required';
+        return;
+      }
 
       WorkTimeDevice.save({ deviceId: $scope.editingDevice.deviceId }, override, function(response) {
         if (response && response.status === 'OK') {

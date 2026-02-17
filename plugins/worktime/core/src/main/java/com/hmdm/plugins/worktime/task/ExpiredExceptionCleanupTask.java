@@ -2,12 +2,15 @@ package com.hmdm.plugins.worktime.task;
 
 import com.hmdm.plugins.worktime.model.WorkTimeDeviceOverride;
 import com.hmdm.plugins.worktime.persistence.WorkTimeDAO;
+import com.hmdm.notification.PushService;
+import com.hmdm.notification.persistence.domain.PushMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 /**
@@ -18,12 +21,15 @@ import java.util.List;
 public class ExpiredExceptionCleanupTask {
 
     private static final Logger log = LoggerFactory.getLogger(ExpiredExceptionCleanupTask.class);
+    private static final ZoneId WORKTIME_ZONE = ZoneId.of("Asia/Kolkata");
     
     private final WorkTimeDAO workTimeDAO;
+    private final PushService pushService;
 
     @Inject
-    public ExpiredExceptionCleanupTask(WorkTimeDAO workTimeDAO) {
+    public ExpiredExceptionCleanupTask(WorkTimeDAO workTimeDAO, PushService pushService) {
         this.workTimeDAO = workTimeDAO;
+        this.pushService = pushService;
     }
 
     /**
@@ -33,7 +39,7 @@ public class ExpiredExceptionCleanupTask {
     public void cleanupExpiredExceptions() {
         try {
             log.debug("Running expired exception cleanup task");
-            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime now = LocalDateTime.now(WORKTIME_ZONE);
             
             // Get all device overrides
             List<WorkTimeDeviceOverride> allOverrides = workTimeDAO.getAllDeviceOverrides();
@@ -44,6 +50,7 @@ public class ExpiredExceptionCleanupTask {
                     log.info("Deleting expired exception for device {} in customer {}", 
                              override.getDeviceId(), override.getCustomerId());
                     workTimeDAO.deleteDeviceOverride(override.getCustomerId(), override.getDeviceId());
+                    pushService.sendSimpleMessage(override.getDeviceId(), PushMessage.TYPE_CONFIG_UPDATED);
                     cleanedCount++;
                 }
             }

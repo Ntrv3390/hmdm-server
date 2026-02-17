@@ -5,6 +5,7 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -29,6 +30,7 @@ import org.slf4j.LoggerFactory;
 public class WorkTimeResource {
 
     private static final Logger log = LoggerFactory.getLogger(WorkTimeResource.class);
+    private static final ZoneId WORKTIME_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final WorkTimeDAO workTimeDAO;
     private final UserDAO userDAO;
@@ -160,7 +162,7 @@ public class WorkTimeResource {
         List<WorkTimeDeviceOverride> result = new java.util.ArrayList<>();
         DateTimeFormatter dateFmt = DateTimeFormatter.ISO_LOCAL_DATE;
         DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm");
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(WORKTIME_ZONE);
         for (Device device : allDevices) {
             WorkTimeDeviceOverride override = overrides.stream()
                     .filter(o -> o.getDeviceId() == device.getId())
@@ -186,6 +188,9 @@ public class WorkTimeResource {
                 LocalDateTime end = override.getEndDateTime().toLocalDateTime();
                 if (now.isAfter(end)) {
                     workTimeDAO.deleteDeviceOverride(customerId, device.getId());
+                    override.setEnabled(true);
+                    override.setStartDateTime((java.sql.Timestamp) null);
+                    override.setEndDateTime((java.sql.Timestamp) null);
                     override.setExceptions(new java.util.ArrayList<>());
                     result.add(override);
                     continue;
