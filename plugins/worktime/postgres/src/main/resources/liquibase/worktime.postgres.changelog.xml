@@ -338,4 +338,34 @@
             <column name="customer_id"/>
         </createIndex>
     </changeSet>
+
+    <changeSet id="worktime-device-override-boundary-push-flags-2026-02-18" author="worktime-plugin">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="worktime_device_override"/>
+            <not>
+                <columnExists tableName="worktime_device_override" columnName="start_boundary_push_sent"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="worktime_device_override">
+            <column name="start_boundary_push_sent" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="end_boundary_push_sent" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <sql>
+            UPDATE worktime_device_override
+            SET
+                start_boundary_push_sent = CASE
+                    WHEN enabled = TRUE THEN TRUE
+                    ELSE FALSE
+                END,
+                end_boundary_push_sent = CASE
+                    WHEN enabled = TRUE THEN TRUE
+                    ELSE FALSE
+                END
+        </sql>
+    </changeSet>
 </databaseChangeLog>

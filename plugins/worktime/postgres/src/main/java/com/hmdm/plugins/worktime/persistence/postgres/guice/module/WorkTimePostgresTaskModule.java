@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Module for initializing background tasks for the WorkTime plugin.
- * Schedules the task for purging expired user exceptions on an hourly basis.
+ * Schedules the task for processing exception boundaries and purging expired exceptions.
  */
 public class WorkTimePostgresTaskModule implements PluginTaskModule {
 
@@ -33,12 +33,12 @@ public class WorkTimePostgresTaskModule implements PluginTaskModule {
     }
 
     /**
-     * Initializes this module. Schedules the task for purging expired user exceptions
-     * from DB on an hourly basis.
+     * Initializes this module. Schedules the task for processing start/end boundaries
+     * and purging expired exceptions from DB every minute.
      */
     @Override
     public void init() {
-        // Run cleanup every hour, starting 1 hour after server start
-        taskRunner.submitRepeatableTask(cleanupTask::cleanupExpiredExceptions, 1, 1, TimeUnit.HOURS);
+        // Run every minute to ensure near real-time exception start/end handling
+        taskRunner.submitRepeatableTask(cleanupTask::cleanupExpiredExceptions, 1, 1, TimeUnit.MINUTES);
     }
 }

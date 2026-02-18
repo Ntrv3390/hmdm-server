@@ -13,6 +13,8 @@ public class EffectiveWorkTimePolicy {
     private final int daysOfWeek; // bitmask 1..64
     private final Set<String> allowedDuring;
     private final Set<String> allowedOutside;
+    private final Long exceptionStartDateTime;
+    private final Long exceptionEndDateTime;
 
     public EffectiveWorkTimePolicy(boolean enforcementEnabled,
                                    String startTime,
@@ -20,12 +22,25 @@ public class EffectiveWorkTimePolicy {
                                    int daysOfWeek,
                                    Set<String> allowedDuring,
                                    Set<String> allowedOutside) {
+        this(enforcementEnabled, startTime, endTime, daysOfWeek, allowedDuring, allowedOutside, null, null);
+    }
+
+    public EffectiveWorkTimePolicy(boolean enforcementEnabled,
+                                   String startTime,
+                                   String endTime,
+                                   int daysOfWeek,
+                                   Set<String> allowedDuring,
+                                   Set<String> allowedOutside,
+                                   Long exceptionStartDateTime,
+                                   Long exceptionEndDateTime) {
         this.enforcementEnabled = enforcementEnabled;
         this.startTime = startTime;
         this.endTime = endTime;
         this.daysOfWeek = daysOfWeek;
         this.allowedDuring = allowedDuring == null ? Collections.emptySet() : allowedDuring;
         this.allowedOutside = allowedOutside == null ? Collections.emptySet() : allowedOutside;
+        this.exceptionStartDateTime = exceptionStartDateTime;
+        this.exceptionEndDateTime = exceptionEndDateTime;
     }
 
     public boolean isEnforcementEnabled() {
@@ -50,6 +65,14 @@ public class EffectiveWorkTimePolicy {
 
     public Set<String> getAllowedOutside() {
         return allowedOutside;
+    }
+
+    public Long getExceptionStartDateTime() {
+        return exceptionStartDateTime;
+    }
+
+    public Long getExceptionEndDateTime() {
+        return exceptionEndDateTime;
     }
 
     public boolean isWildcardAllowedDuring() {

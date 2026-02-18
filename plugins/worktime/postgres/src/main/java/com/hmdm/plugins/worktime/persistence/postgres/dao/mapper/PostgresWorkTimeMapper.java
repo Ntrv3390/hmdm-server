@@ -24,6 +24,10 @@ public interface PostgresWorkTimeMapper {
 
     void deleteDeviceOverride(@Param("customerId") int customerId, @Param("deviceId") int deviceId);
 
+    void markExceptionStartPushSent(@Param("customerId") int customerId, @Param("deviceId") int deviceId);
+
+    void markExceptionEndPushSent(@Param("customerId") int customerId, @Param("deviceId") int deviceId);
+
     // Get all device overrides across all customers (for cleanup task)
     List<WorkTimeDeviceOverride> getAllDeviceOverrides();
 }

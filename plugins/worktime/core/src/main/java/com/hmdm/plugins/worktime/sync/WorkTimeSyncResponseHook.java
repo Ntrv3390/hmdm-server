@@ -14,6 +14,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.lang.reflect.Method;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 /**
  * <p>
@@ -31,6 +32,7 @@ public class WorkTimeSyncResponseHook implements SyncResponseHook {
 
     private static final Logger log = LoggerFactory.getLogger(WorkTimeSyncResponseHook.class);
     private static final String WORKTIME_CUSTOM_FIELD = "custom1"; // Using custom1 field for worktime data
+    private static final ZoneId WORKTIME_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final UnsecureDAO unsecureDAO;
     private final WorkTimeService workTimeService;
@@ -61,7 +63,7 @@ public class WorkTimeSyncResponseHook implements SyncResponseHook {
             EffectiveWorkTimePolicy policy = workTimeService.resolveEffectivePolicy(
                     customerId,
                     deviceId,
-                    LocalDateTime.now());
+                    LocalDateTime.now(WORKTIME_ZONE));
 
             // Create wrapper object with metadata
             WorkTimePolicyWrapper wrapper = new WorkTimePolicyWrapper(policy);

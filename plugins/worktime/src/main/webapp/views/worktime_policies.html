@@ -374,9 +374,9 @@
 
           <!-- Actions -->
           <div class="form-actions text-right">
-            <button class="btn btn-default" ng-click="refresh()">Reload</button>
-            <button class="btn btn-success" ng-click="save()">
-              Save Policy
+            <button type="button" class="btn btn-default" ng-click="refresh()">Reload</button>
+            <button type="button" class="btn btn-success" ng-click="save()" ng-disabled="isSaving">
+              {{isSaving ? 'Saving...' : 'Save Policy'}}
             </button>
           </div>
         </form>

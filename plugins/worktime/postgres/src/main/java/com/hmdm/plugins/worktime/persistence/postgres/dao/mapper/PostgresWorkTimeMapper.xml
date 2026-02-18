@@ -77,6 +77,8 @@
         <result property="priority" column="priority"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
+        <result property="startBoundaryPushSent" column="start_boundary_push_sent"/>
+        <result property="endBoundaryPushSent" column="end_boundary_push_sent"/>
     </resultMap>
 
     <select id="getDeviceOverrides" resultMap="deviceOverrideResult">
@@ -109,7 +111,9 @@
             priority,
             customer_id,
             created_at,
-            updated_at
+            updated_at,
+            start_boundary_push_sent,
+            end_boundary_push_sent
         ) VALUES (
             #{deviceId},
             #{startTime},
@@ -123,7 +127,9 @@
             #{priority},
             #{customerId},
             now(),
-            now()
+            now(),
+            #{startBoundaryPushSent},
+            #{endBoundaryPushSent}
         )
     </insert>
 
@@ -139,6 +145,24 @@
             allowed_apps_outside_work = #{allowedAppsOutsideWork},
             enabled = #{enabled},
             priority = #{priority},
+            start_boundary_push_sent = #{startBoundaryPushSent},
+            end_boundary_push_sent = #{endBoundaryPushSent},
+            updated_at = now()
+        WHERE customer_id = #{customerId} AND device_id = #{deviceId}
+    </update>
+
+    <update id="markExceptionStartPushSent">
+        UPDATE worktime_device_override
+        SET
+            start_boundary_push_sent = TRUE,
+            updated_at = now()
+        WHERE customer_id = #{customerId} AND device_id = #{deviceId}
+    </update>
+
+    <update id="markExceptionEndPushSent">
+        UPDATE worktime_device_override
+        SET
+            end_boundary_push_sent = TRUE,
             updated_at = now()
         WHERE customer_id = #{customerId} AND device_id = #{deviceId}
     </update>

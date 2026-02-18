@@ -10,6 +10,9 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import com.hmdm.plugins.worktime.model.WorkTimePolicy;
 import com.hmdm.plugins.worktime.model.WorkTimeDeviceOverride;
@@ -31,6 +34,7 @@ public class WorkTimeResource {
 
     private static final Logger log = LoggerFactory.getLogger(WorkTimeResource.class);
     private static final ZoneId WORKTIME_ZONE = ZoneId.of("Asia/Kolkata");
+    private static final ScheduledExecutorService PUSH_RETRY_EXECUTOR = Executors.newSingleThreadScheduledExecutor();
 
     private final WorkTimeDAO workTimeDAO;
     private final UserDAO userDAO;
@@ -77,6 +81,25 @@ public class WorkTimeResource {
         if (policy.getEnabled() == null) {
             policy.setEnabled(true);
         }
+    }
+
+    private void sendConfigUpdatedTwice(int deviceId) {
+        // Reliability fallback: some devices may miss a single push notification.
+        // Send once immediately and once with a short delay.
+        PushMessage immediate = new PushMessage();
+        immediate.setDeviceId(deviceId);
+        immediate.setMessageType(PushMessage.TYPE_CONFIG_UPDATED);
+        pushService.send(immediate);
+        PUSH_RETRY_EXECUTOR.schedule(() -> {
+            try {
+                PushMessage delayed = new PushMessage();
+                delayed.setDeviceId(deviceId);
+                delayed.setMessageType(PushMessage.TYPE_CONFIG_UPDATED);
+                pushService.send(delayed);
+            } catch (Exception e) {
+                log.warn("Failed to send delayed config update push to device {}", deviceId, e);
+            }
+        }, 2, TimeUnit.SECONDS);
     }
 
     // --- Global policy endpoints ---
@@ -128,9 +151,14 @@ public class WorkTimeResource {
 
         // Notify all devices about policy update
         List<Device> devices = deviceDAO.getAllDevices();
+        int notified = 0;
         for (Device device : devices) {
-            pushService.sendSimpleMessage(device.getId(), PushMessage.TYPE_CONFIG_UPDATED);
+            sendConfigUpdatedTwice(device.getId());
+            notified++;
         }
+
+        log.info("Saved WorkTime global policy for customer {} and sent double config update to {} devices",
+                customerId, notified);
 
         return Response.OK(policy);
     }
@@ -258,7 +286,7 @@ public class WorkTimeResource {
         workTimeDAO.saveDeviceOverride(override);
 
         // Notify device about policy update
-        pushService.sendSimpleMessage(override.getDeviceId(), PushMessage.TYPE_CONFIG_UPDATED);
+        sendConfigUpdatedTwice(override.getDeviceId());
 
         return Response.OK(override);
     }
@@ -278,7 +306,7 @@ public class WorkTimeResource {
         workTimeDAO.deleteDeviceOverride(customerId, deviceId);
 
         // Notify device about policy update
-        pushService.sendSimpleMessage(deviceId, PushMessage.TYPE_CONFIG_UPDATED);
+        sendConfigUpdatedTwice(deviceId);
 
         return Response.OK();
     }

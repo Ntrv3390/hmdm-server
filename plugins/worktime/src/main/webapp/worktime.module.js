@@ -70,6 +70,7 @@ angular
       $scope.policy = null;
       $scope.error = null;
       $scope.success = null;
+      $scope.isSaving = false;
       $scope.applications = [];
       $scope.appsLoading = true;
       $scope.selectedAppsDuringWork = {};
@@ -316,8 +317,13 @@ angular
       };
 
       $scope.save = function () {
+        if ($scope.isSaving) {
+          return;
+        }
+
         $scope.error = null;
         $scope.success = null;
+        $scope.isSaving = true;
 
         // Convert selected apps to comma-separated strings
         var policyToSave = angular.copy($scope.policy);
@@ -327,6 +333,7 @@ angular
         WorkTimePolicy.save(
           policyToSave,
           function (response) {
+            $scope.isSaving = false;
             if (response && response.status === "OK") {
               $scope.policy = response.data;
               $scope.selectedAppsDuringWork = $scope.parseAppsString($scope.policy.allowedAppsDuringWork);
@@ -345,6 +352,7 @@ angular
             }
           },
           function () {
+            $scope.isSaving = false;
             $scope.error = localization.localize("error.request.failure");
           }
         );
@@ -629,14 +637,18 @@ angular
 
       $scope.editingDevice = device;
       var existing = (device.exceptions && device.exceptions.length > 0) ? device.exceptions[0] : null;
+      var defaultFrom = new Date();
+      defaultFrom.setMinutes(defaultFrom.getMinutes() + 1, 0, 0);
+      var defaultTo = new Date();
+      defaultTo.setHours(defaultTo.getHours() + 1, 0, 0, 0);
       $scope.editingException = existing ? angular.copy(existing) : {
-        dateFrom: new Date(),
-        dateTo: new Date(),
-        timeFrom: '09:00',
-        timeTo: '18:00'
+        dateFrom: defaultFrom,
+        dateTo: defaultTo,
+        timeFrom: ('0' + defaultFrom.getHours()).slice(-2) + ':' + ('0' + defaultFrom.getMinutes()).slice(-2),
+        timeTo: ('0' + defaultTo.getHours()).slice(-2) + ':' + ('0' + defaultTo.getMinutes()).slice(-2)
       };
-      $scope.editingException.timeFromInput = parseTimeToDate($scope.editingException.timeFrom) || parseTimeToDate('09:00');
-      $scope.editingException.timeToInput = parseTimeToDate($scope.editingException.timeTo) || parseTimeToDate('18:00');
+      $scope.editingException.timeFromInput = parseTimeToDate($scope.editingException.timeFrom) || parseTimeToDate(toTimePart(defaultFrom));
+      $scope.editingException.timeToInput = parseTimeToDate($scope.editingException.timeTo) || parseTimeToDate(toTimePart(defaultTo));
       $scope.openExceptionModal();
     };
 

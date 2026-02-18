@@ -41,14 +41,28 @@ public class WorkTimeService {
         // Check device override
         WorkTimeDeviceOverride override = dao.getDeviceOverride(customerId, deviceId);
         if (override != null && !override.isEnabled()) {
+            Long exceptionStartMillis = override.getStartDateTime() != null ? override.getStartDateTime().getTime() : null;
+            Long exceptionEndMillis = override.getEndDateTime() != null ? override.getEndDateTime().getTime() : null;
             if (isExceptionActive(override, now)) {
                 int globalDays = global.getDaysOfWeek() != null ? global.getDaysOfWeek() : 127;
                 return new EffectiveWorkTimePolicy(false, global.getStartTime(), global.getEndTime(), globalDays,
                         parseAllowed(global.getAllowedAppsDuringWork()),
-                        parseAllowed(global.getAllowedAppsOutsideWork()));
+                        parseAllowed(global.getAllowedAppsOutsideWork()),
+                        exceptionStartMillis,
+                        exceptionEndMillis);
             }
             if (isExceptionExpired(override, now)) {
                 dao.deleteDeviceOverride(customerId, deviceId);
+            } else {
+                int globalDays = global.getDaysOfWeek() != null ? global.getDaysOfWeek() : 127;
+                return new EffectiveWorkTimePolicy(true,
+                        global.getStartTime(),
+                        global.getEndTime(),
+                        globalDays,
+                        parseAllowed(global.getAllowedAppsDuringWork()),
+                        parseAllowed(global.getAllowedAppsOutsideWork()),
+                        exceptionStartMillis,
+                        exceptionEndMillis);
             }
         }
         if (override != null && override.isEnabled()) {

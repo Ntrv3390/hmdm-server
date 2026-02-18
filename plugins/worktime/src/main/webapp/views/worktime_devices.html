@@ -147,6 +147,15 @@
       border: none;
     }
 
+    .worktime-inline-alert {
+      position: static !important;
+      width: auto !important;
+      left: auto !important;
+      bottom: auto !important;
+      z-index: auto !important;
+      margin-bottom: 15px !important;
+    }
+
     /* Empty state */
     .text-muted-center {
       text-align: center;
@@ -341,7 +350,7 @@
     <div class="modal-body" style="padding:25px; background:#f7f9fc;">
       <form name="exceptionForm">
 
-        <div class="alert alert-info" style="border-radius:10px; border:none;">
+        <div class="alert alert-info worktime-inline-alert" style="border-radius:10px; border:none;">
           <strong>Note:</strong>
           This exception will turn OFF work time enforcement for the selected
           device during the specified dates and times.

@@ -413,6 +413,30 @@ angular.module('plugin-deviceinfo', ['ngResource', 'ui.bootstrap', 'ui.router', 
             $scope.errorMessage = undefined;
         };
 
+        $scope.refreshState = {
+            lastRequestedAt: null,
+            waitingForNewData: false
+        };
+
+        var refreshBaselineTs = 0;
+
+        var getLatestGpsRecordTs = function(items) {
+            if (!items || !items.length) {
+                return 0;
+            }
+
+            for (var i = 0; i < items.length; i++) {
+                var item = items[i];
+                var lat = parseFloat(item && item.gpsLat);
+                var lon = parseFloat(item && item.gpsLon);
+                if (isFinite(lat) && isFinite(lon) && item.latestUpdateTime) {
+                    return item.latestUpdateTime;
+                }
+            }
+
+            return 0;
+        };
+
         var postRefreshPollingPromise = null;
 
         var startPostRefreshPolling = function () {
@@ -511,17 +535,21 @@ angular.module('plugin-deviceinfo', ['ngResource', 'ui.bootstrap', 'ui.router', 
             // Find the most recent item with valid GPS coordinates
             var latestItem = null;
             for (var i = 0; i < items.length; i++) {
-                if (items[i].gpsLat && items[i].gpsLon) {
+                var lat = parseFloat(items[i] && items[i].gpsLat);
+                var lon = parseFloat(items[i] && items[i].gpsLon);
+                if (isFinite(lat) && isFinite(lon)) {
                     latestItem = items[i];
                     break; // Found the latest one
                 }
             }
 
             if (latestItem) {
+                var markerLat = parseFloat(latestItem.gpsLat);
+                var markerLon = parseFloat(latestItem.gpsLon);
                 mapService.addMarker(
                     latestItem.id,
-                    latestItem.gpsLat,
-                    latestItem.gpsLon,
+                    markerLat,
+                    markerLon,
                     {
                         iconUrl: 'images/circle-green.png',
                         iconSize: [48, 48],
@@ -529,7 +557,7 @@ angular.module('plugin-deviceinfo', ['ngResource', 'ui.bootstrap', 'ui.router', 
                     },
                     "Time: " + new Date(latestItem.latestUpdateTime).toLocaleString()
                 );
-                mapService.centerMap(latestItem.gpsLat, latestItem.gpsLon);
+                mapService.centerMap(markerLat, markerLon);
             }
         };
 

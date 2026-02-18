@@ -65,6 +65,12 @@ public class WorkTimeDeviceOverride implements Serializable {
     @ApiModelProperty("Updated at")
     private Timestamp updatedAt;
 
+    @ApiModelProperty("Whether exception start boundary push has been sent")
+    private Boolean startBoundaryPushSent;
+
+    @ApiModelProperty("Whether exception end boundary push has been sent")
+    private Boolean endBoundaryPushSent;
+
     @ApiModelProperty("List of exceptions (transient, not persisted)")
     private java.util.List<java.util.Map<String, Object>> exceptions;
 
@@ -213,6 +219,22 @@ public class WorkTimeDeviceOverride implements Serializable {
 
     public void setUpdatedAt(Timestamp updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Boolean getStartBoundaryPushSent() {
+        return startBoundaryPushSent;
+    }
+
+    public void setStartBoundaryPushSent(Boolean startBoundaryPushSent) {
+        this.startBoundaryPushSent = startBoundaryPushSent;
+    }
+
+    public Boolean getEndBoundaryPushSent() {
+        return endBoundaryPushSent;
+    }
+
+    public void setEndBoundaryPushSent(Boolean endBoundaryPushSent) {
+        this.endBoundaryPushSent = endBoundaryPushSent;
     }
 
     public java.util.List<java.util.Map<String, Object>> getExceptions() {

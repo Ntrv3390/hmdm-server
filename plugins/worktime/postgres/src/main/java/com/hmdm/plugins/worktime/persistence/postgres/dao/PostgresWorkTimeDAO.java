@@ -49,6 +49,14 @@ public class PostgresWorkTimeDAO implements WorkTimeDAO {
     @Override
     @Transactional
     public void saveDeviceOverride(WorkTimeDeviceOverride policy) {
+        if (!policy.isEnabled() && policy.getStartDateTime() != null && policy.getEndDateTime() != null) {
+            policy.setStartBoundaryPushSent(Boolean.FALSE);
+            policy.setEndBoundaryPushSent(Boolean.FALSE);
+        } else {
+            policy.setStartBoundaryPushSent(Boolean.TRUE);
+            policy.setEndBoundaryPushSent(Boolean.TRUE);
+        }
+
         WorkTimeDeviceOverride existing = mapper.getDeviceOverride(policy.getCustomerId(), policy.getDeviceId());
         if (existing == null) {
             mapper.insertDeviceOverride(policy);
@@ -61,6 +69,18 @@ public class PostgresWorkTimeDAO implements WorkTimeDAO {
     @Transactional
     public void deleteDeviceOverride(int customerId, int deviceId) {
         mapper.deleteDeviceOverride(customerId, deviceId);
+    }
+
+    @Override
+    @Transactional
+    public void markExceptionStartPushSent(int customerId, int deviceId) {
+        mapper.markExceptionStartPushSent(customerId, deviceId);
+    }
+
+    @Override
+    @Transactional
+    public void markExceptionEndPushSent(int customerId, int deviceId) {
+        mapper.markExceptionEndPushSent(customerId, deviceId);
     }
 
     @Override

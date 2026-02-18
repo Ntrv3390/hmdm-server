@@ -38,31 +38,84 @@ public class ExpiredExceptionCleanupTask {
      */
     public void cleanupExpiredExceptions() {
         try {
-            log.debug("Running expired exception cleanup task");
+            log.debug("Running worktime exception boundary/cleanup task");
             LocalDateTime now = LocalDateTime.now(WORKTIME_ZONE);
             
             // Get all device overrides
             List<WorkTimeDeviceOverride> allOverrides = workTimeDAO.getAllDeviceOverrides();
             
             int cleanedCount = 0;
+            int startBoundaryPushCount = 0;
+            int endBoundaryPushCount = 0;
             for (WorkTimeDeviceOverride override : allOverrides) {
+                if (!isExceptionOverride(override)) {
+                    continue;
+                }
+
+                if (shouldSendStartBoundaryPush(override, now)) {
+                    sendConfigUpdated(override.getDeviceId());
+                    workTimeDAO.markExceptionStartPushSent(override.getCustomerId(), override.getDeviceId());
+                    startBoundaryPushCount++;
+                    log.info("Sent persisted start boundary push for device {} in customer {}",
+                            override.getDeviceId(), override.getCustomerId());
+                }
+
+                if (shouldSendEndBoundaryPush(override, now)) {
+                    sendConfigUpdated(override.getDeviceId());
+                    workTimeDAO.markExceptionEndPushSent(override.getCustomerId(), override.getDeviceId());
+                    endBoundaryPushCount++;
+                    log.info("Sent persisted end boundary push for device {} in customer {}",
+                            override.getDeviceId(), override.getCustomerId());
+                }
+
                 if (isExpired(override, now)) {
                     log.info("Deleting expired exception for device {} in customer {}", 
                              override.getDeviceId(), override.getCustomerId());
                     workTimeDAO.deleteDeviceOverride(override.getCustomerId(), override.getDeviceId());
-                    pushService.sendSimpleMessage(override.getDeviceId(), PushMessage.TYPE_CONFIG_UPDATED);
+                    sendConfigUpdated(override.getDeviceId());
                     cleanedCount++;
                 }
             }
             
-            if (cleanedCount > 0) {
-                log.info("Cleaned up {} expired device exceptions", cleanedCount);
+            if (cleanedCount > 0 || startBoundaryPushCount > 0 || endBoundaryPushCount > 0) {
+                log.info("Worktime exception task summary: startPushes={}, endPushes={}, cleanedExpired={}",
+                        startBoundaryPushCount, endBoundaryPushCount, cleanedCount);
             } else {
-                log.debug("No expired exceptions found");
+                log.debug("No boundary pushes or expired exceptions to process");
             }
         } catch (Exception e) {
             log.error("Error during expired exception cleanup", e);
         }
+    }
+
+    private void sendConfigUpdated(int deviceId) {
+        PushMessage message = new PushMessage();
+        message.setDeviceId(deviceId);
+        message.setMessageType(PushMessage.TYPE_CONFIG_UPDATED);
+        pushService.send(message);
+    }
+
+    private boolean isExceptionOverride(WorkTimeDeviceOverride override) {
+        return !override.isEnabled() && override.getStartDateTime() != null && override.getEndDateTime() != null;
+    }
+
+    private boolean shouldSendStartBoundaryPush(WorkTimeDeviceOverride override, LocalDateTime now) {
+        if (Boolean.TRUE.equals(override.getStartBoundaryPushSent())) {
+            return false;
+        }
+
+        LocalDateTime start = override.getStartDateTime().toLocalDateTime();
+        LocalDateTime end = override.getEndDateTime().toLocalDateTime();
+        return (!now.isBefore(start)) && (!now.isAfter(end));
+    }
+
+    private boolean shouldSendEndBoundaryPush(WorkTimeDeviceOverride override, LocalDateTime now) {
+        if (Boolean.TRUE.equals(override.getEndBoundaryPushSent())) {
+            return false;
+        }
+
+        LocalDateTime end = override.getEndDateTime().toLocalDateTime();
+        return now.isAfter(end);
     }
 
     /**
@@ -70,11 +123,7 @@ public class ExpiredExceptionCleanupTask {
      */
     private boolean isExpired(WorkTimeDeviceOverride override, LocalDateTime now) {
         // Only check exceptions (enabled=false with date range)
-        if (override.isEnabled()) {
-            return false;
-        }
-        
-        if (override.getEndDateTime() == null) {
+        if (!isExceptionOverride(override)) {
             return false;
         }
         

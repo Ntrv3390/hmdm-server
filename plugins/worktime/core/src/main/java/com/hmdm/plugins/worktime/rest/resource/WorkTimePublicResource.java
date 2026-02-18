@@ -17,6 +17,7 @@ import javax.inject.Singleton;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Optional;
 
 /**
@@ -32,6 +33,7 @@ import java.util.Optional;
 public class WorkTimePublicResource {
 
     private static final Logger log = LoggerFactory.getLogger(WorkTimePublicResource.class);
+    private static final ZoneId WORKTIME_ZONE = ZoneId.of("Asia/Kolkata");
     
     private final WorkTimeService workTimeService;
     private final UnsecureDAO unsecureDAO;
@@ -56,6 +58,20 @@ public class WorkTimePublicResource {
 
     private boolean isAuthenticated() {
         return SecurityContext.get().getCurrentUser().isPresent();
+    }
+
+    private Device resolveDevice(String deviceNumberOrId) {
+        Device device = unsecureDAO.getDeviceByNumber(deviceNumberOrId);
+        if (device != null) {
+            return device;
+        }
+
+        try {
+            Integer internalId = Integer.valueOf(deviceNumberOrId);
+            return unsecureDAO.getDeviceById(internalId);
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     // ==================================================================================
@@ -124,8 +140,7 @@ public class WorkTimePublicResource {
     public Response getDevicePolicy(
             @PathParam("deviceNumber") @ApiParam("Device number/ID from MDM") String deviceNumber) {
         try {
-            // Resolve device by device number
-            Device device = unsecureDAO.getDeviceByNumber(deviceNumber);
+            Device device = resolveDevice(deviceNumber);
             if (device == null) {
                 log.warn("Device {} not found", deviceNumber);
                 return Response.DEVICE_NOT_FOUND_ERROR();
@@ -138,10 +153,12 @@ public class WorkTimePublicResource {
             EffectiveWorkTimePolicy policy = workTimeService.resolveEffectivePolicy(
                 customerId, 
                 deviceId, 
-                LocalDateTime.now()
+                LocalDateTime.now(WORKTIME_ZONE)
             );
 
-            log.debug("Returning worktime policy for device {}: enabled={}", deviceNumber, policy.isEnforcementEnabled());
+            log.debug("Returning worktime policy for device {} (id={}): enabled={}, exStart={}, exEnd={}",
+                    deviceNumber, deviceId, policy.isEnforcementEnabled(),
+                    policy.getExceptionStartDateTime(), policy.getExceptionEndDateTime());
             return Response.OK(policy);
             
         } catch (Exception e) {
@@ -166,8 +183,7 @@ public class WorkTimePublicResource {
         }
 
         try {
-            // Resolve device by device number
-            Device device = unsecureDAO.getDeviceByNumber(deviceNumber);
+            Device device = resolveDevice(deviceNumber);
             if (device == null) {
                 log.warn("Device {} not found", deviceNumber);
                 return Response.DEVICE_NOT_FOUND_ERROR();
@@ -181,7 +197,7 @@ public class WorkTimePublicResource {
                 customerId, 
                 deviceId, 
                 pkg, 
-                LocalDateTime.now()
+                LocalDateTime.now(WORKTIME_ZONE)
             );
 
             log.debug("App {} allowed for device {}: {}", pkg, deviceNumber, allowed);
@@ -202,7 +218,7 @@ public class WorkTimePublicResource {
     )
     public Response getDeviceStatus(@PathParam("deviceNumber") @ApiParam("Device number/ID") String deviceNumber) {
         try {
-            Device device = unsecureDAO.getDeviceByNumber(deviceNumber);
+            Device device = resolveDevice(deviceNumber);
             if (device == null) {
                 log.warn("Device {} not found", deviceNumber);
                 return Response.DEVICE_NOT_FOUND_ERROR();
@@ -214,11 +230,11 @@ public class WorkTimePublicResource {
             EffectiveWorkTimePolicy policy = workTimeService.resolveEffectivePolicy(
                 customerId, 
                 deviceId, 
-                LocalDateTime.now()
+                LocalDateTime.now(WORKTIME_ZONE)
             );
 
             // Return status object with enabled flag and current work time status
-            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime now = LocalDateTime.now(WORKTIME_ZONE);
             boolean isWorkTime = workTimeService.isWorkTime(
                 policy.getStartTime(), 
                 policy.getEndTime(), 
