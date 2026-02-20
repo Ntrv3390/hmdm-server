@@ -31,5 +31,6 @@
   "button.previous": "Previous",
   "button.next": "Next",
   "button.close": "Close",
+  "button.refresh": "Refresh",
   "loading.data": "Loading data..."
 }

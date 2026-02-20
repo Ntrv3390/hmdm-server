@@ -1,6 +1,6 @@
 package com.hmdm.plugins.calllog.rest.resource;
 
-import com.hmdm.persistence.DeviceDAO;
+import com.hmdm.persistence.UnsecureDAO;
 import com.hmdm.persistence.domain.Device;
 import com.hmdm.plugins.calllog.model.CallLogRecord;
 import com.hmdm.plugins.calllog.model.CallLogSettings;
@@ -28,12 +28,12 @@ public class CallLogPublicResource {
     private static final Logger log = LoggerFactory.getLogger(CallLogPublicResource.class);
 
     private final CallLogDAO callLogDAO;
-    private final DeviceDAO deviceDAO;
+    private final UnsecureDAO unsecureDAO;
 
     @Inject
-    public CallLogPublicResource(CallLogDAO callLogDAO, DeviceDAO deviceDAO) {
+    public CallLogPublicResource(CallLogDAO callLogDAO, UnsecureDAO unsecureDAO) {
         this.callLogDAO = callLogDAO;
-        this.deviceDAO = deviceDAO;
+        this.unsecureDAO = unsecureDAO;
     }
 
     /**
@@ -49,7 +49,7 @@ public class CallLogPublicResource {
     ) {
         try {
             // Find device by number
-            Device device = deviceDAO.getDeviceByNumber(deviceNumber);
+            Device device = unsecureDAO.getDeviceByNumber(deviceNumber);
             if (device == null) {
                 log.warn("Call log submission failed: device not found: {}", deviceNumber);
                 return Response.ERROR("error.device.not.found");
@@ -98,7 +98,7 @@ public class CallLogPublicResource {
             @ApiParam("Device number") @PathParam("deviceNumber") String deviceNumber
     ) {
         try {
-            Device device = deviceDAO.getDeviceByNumber(deviceNumber);
+            Device device = unsecureDAO.getDeviceByNumber(deviceNumber);
             if (device == null) {
                 return Response.ERROR("error.device.not.found");
             }

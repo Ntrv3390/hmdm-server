@@ -159,6 +159,15 @@
       <div class="panel-heading">
         <span localized>plugin.calllog.logs.title</span>
         <button
+          class="btn btn-default btn-xs btn-modern pull-right"
+          ng-click="loadCallLogs()"
+          ng-disabled="loading"
+          style="margin-left: 8px;"
+          localized
+        >
+          button.refresh
+        </button>
+        <button
           class="btn btn-danger btn-xs btn-modern pull-right"
           ng-click="deleteAllLogs()"
           ng-disabled="loading || callLogs.length === 0"
