@@ -175,9 +175,13 @@
           <p localized>loading.data</p>
         </div>
 
+        <div ng-if="!loading && errorMessage" class="alert alert-danger">
+          {{errorMessage}}
+        </div>
+
         <!-- Empty -->
         <div
-          ng-if="!loading && callLogs.length === 0"
+          ng-if="!loading && !errorMessage && callLogs.length === 0"
           class="text-center text-muted"
         >
           <p localized>plugin.calllog.no.logs</p>
@@ -204,7 +208,7 @@
                     ng-class="{
                                             'label-success': log.callType === 1 || log.callType === 2,
                                             'label-warning': log.callType === 3,
-                                            'label-danger': log.callType === 4 || log.callType === 5
+                                            'label-danger': log.callType === 5 || log.callType === 6
                                           }"
                   >
                     {{getCallTypeName(log.callType)}}

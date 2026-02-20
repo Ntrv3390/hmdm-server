@@ -91,8 +91,15 @@ public class CallLogResource {
         }
 
         int offset = page * pageSize;
-        List<CallLogRecord> logs = callLogDAO.getCallLogsByDevicePaged(deviceId, customerId, pageSize, offset);
-        int total = callLogDAO.getCallLogsCountByDevice(deviceId, customerId);
+        List<CallLogRecord> logs;
+        int total;
+        try {
+            logs = callLogDAO.getCallLogsByDevicePaged(deviceId, customerId, pageSize, offset);
+            total = callLogDAO.getCallLogsCountByDevice(deviceId, customerId);
+        } catch (Exception e) {
+            log.error("Failed to load call logs for device {} and customer {}", deviceId, customerId, e);
+            return Response.ERROR("plugin.calllog.error.backend.not.ready");
+        }
 
         Map<String, Object> result = new HashMap<>();
         result.put("items", logs);

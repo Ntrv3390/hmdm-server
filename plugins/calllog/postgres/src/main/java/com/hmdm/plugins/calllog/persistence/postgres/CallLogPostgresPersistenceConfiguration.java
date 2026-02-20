@@ -2,6 +2,7 @@ package com.hmdm.plugins.calllog.persistence.postgres;
 
 import com.google.inject.Module;
 import com.hmdm.plugins.calllog.persistence.CallLogPersistenceConfiguration;
+import com.hmdm.plugins.calllog.persistence.postgres.guice.module.CallLogPostgresLiquibaseModule;
 import com.hmdm.plugins.calllog.persistence.postgres.guice.module.CallLogPostgresPersistenceModule;
 import com.hmdm.plugins.calllog.persistence.postgres.guice.module.CallLogPostgresServiceModule;
 
@@ -17,7 +18,7 @@ public class CallLogPostgresPersistenceConfiguration implements CallLogPersisten
     @Override
     public List<Module> getPersistenceModules(ServletContext context) {
         List<Module> modules = new ArrayList<>();
-        // Service module must be added before REST module to bind DAOs
+        modules.add(new CallLogPostgresLiquibaseModule(context));
         modules.add(new CallLogPostgresServiceModule());
         modules.add(new CallLogPostgresPersistenceModule(context));
         return modules;

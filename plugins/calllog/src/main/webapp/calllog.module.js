@@ -92,8 +92,8 @@ angular.module('headwind-kiosk')
                 case 1: return localization.localize('plugin.calllog.type.incoming');
                 case 2: return localization.localize('plugin.calllog.type.outgoing');
                 case 3: return localization.localize('plugin.calllog.type.missed');
-                case 4: return localization.localize('plugin.calllog.type.rejected');
-                case 5: return localization.localize('plugin.calllog.type.blocked');
+                case 5: return localization.localize('plugin.calllog.type.rejected');
+                case 6: return localization.localize('plugin.calllog.type.blocked');
                 default: return localization.localize('plugin.calllog.type.unknown');
             }
         };

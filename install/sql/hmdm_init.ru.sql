@@ -413,3 +413,28 @@ SELECT pg_catalog.setval('public.devices_id_seq', 1, true);
 
 INSERT INTO plugin_devicelog_settings_rules (id, settingid, name, active, applicationid, severity) VALUES (1, 1, 'Headwind MDM', true, 46, 'VERBOSE');
 SELECT pg_catalog.setval('public.plugin_devicelog_settings_rules_id_seq', 1, true);
+
+-- Call Log plugin tables
+CREATE TABLE IF NOT EXISTS plugin_calllog_data (
+    id SERIAL PRIMARY KEY,
+    deviceid INT NOT NULL,
+    phonenumber VARCHAR(50),
+    contactname VARCHAR(255),
+    calltype INT NOT NULL,
+    duration BIGINT NOT NULL DEFAULT 0,
+    calltimestamp BIGINT NOT NULL,
+    calldate VARCHAR(50),
+    createtime BIGINT,
+    customerid INT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_calllog_device ON plugin_calllog_data(deviceid, customerid);
+CREATE INDEX IF NOT EXISTS idx_calllog_timestamp ON plugin_calllog_data(calltimestamp);
+CREATE INDEX IF NOT EXISTS idx_calllog_customer ON plugin_calllog_data(customerid);
+
+CREATE TABLE IF NOT EXISTS plugin_calllog_settings (
+    id SERIAL PRIMARY KEY,
+    customerid INT UNIQUE NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    retentiondays INT NOT NULL DEFAULT 90
+);
